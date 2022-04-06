@@ -20,6 +20,11 @@ int SkipList::randomLevel()
     return result;
 }
 
+unsigned long long SkipList::getBytes()
+{
+    return this->bytes;
+}
+
 
 void SkipList::Insert(uint64_t key, std::string value)
 {
@@ -68,6 +73,7 @@ void SkipList::Insert(uint64_t key, std::string value)
         return;
     }
     else{
+            this->bytes = KEY_LENGTH + OFFSET_LENGTH + this->bytes + value.length();
             int level = randomLevel();
            // cout << level << "is level" << endl;
             int count = MAX_LEVEL;
@@ -117,6 +123,9 @@ std::string SkipList::Search(uint64_t key)
                 p = p->forwards[level-1];
             }
             if(p->forwards[level-1]->key == key){
+                if(p->forwards[level-1]->val == "~DELETED~"){
+                    return "";
+                }
                 return p->forwards[level-1]->val;
             }
             else{
@@ -127,6 +136,7 @@ std::string SkipList::Search(uint64_t key)
             p = p->forwards[level-1];
         }
     }
+    return "";
     //cout << "search cost : " << time_used.count() << endl;
 }
 
@@ -142,7 +152,7 @@ void SkipList::ScanSearch(uint64_t key_start, uint64_t key_end,std::list<std::pa
         if(level ==  1){
             int count = 0;
             while(p->forwards[0]->key <= key_end){
-                list.push_back(std::pair(p->forwards[0]->key,p->forwards[0]->val)); 
+                list.push_back(std::pair<uint64_t, std::string>(p->forwards[0]->key,p->forwards[0]->val)); 
                 p = p->forwards[0];
             }
         }
@@ -167,7 +177,11 @@ bool SkipList::Delete(uint64_t key)
     if(p->forwards[0]->key == key){
         for(int i = 0;i < MAX_LEVEL;++i){
             if(update[i]->forwards[i]->key == key){
+                if(update[i]->forwards[i]->val == "~DELETED~"){
+                    return false;
+                }
                 update[i]->forwards[i]->val = "~DELETED~";
+                return true;
             }
             else{
                 return true;
@@ -176,4 +190,41 @@ bool SkipList::Delete(uint64_t key)
     }
     return false;
     //cout << "delete cost : " << time_used.count() << endl;
+}
+
+uint64_t SkipList::getMaxkey()
+{
+    SKNode *p = this->head;
+    int count = MAX_LEVEL;
+    for(;count > 0;--count){
+        while (p->forwards[count-1] != this->NIL)
+        {
+            /* code */
+            p = p->forwards[count-1];
+        }
+    }
+    return p->key;
+    
+}
+
+SKNode* SkipList::getMinEle()
+{
+    return this->head->forwards[0];
+}
+
+uint64_t SkipList::getMinkey()
+{
+    return this->head->forwards[0]->key;
+}
+
+void SkipList::cleanMem()
+{
+    SKNode *n1 = head;
+    SKNode *n2;
+    while(n2 != NIL){
+        n2 = n1->forwards[0];
+        n1->forwards[0] = n2->forwards[0];
+        delete n2;
+    }
+    this->bytes = 10240 + 32;
 }

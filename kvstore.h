@@ -2,11 +2,17 @@
 
 #include "kvstore_api.h"
 #include "SkipList.h"
+#include "SSTable.h"
 
 class KVStore : public KVStoreAPI {
 	// You can add your implementation here
 private:
-	SkipList Memtable;
+	SkipList Memtable;//用跳表实现的内存存储 
+	std::string rootDir;//存储多级存储的根目录
+	unsigned long long timeStamp;//记录level0的时间戳
+	unsigned long long key_count;//记录写入SStable的键的数量
+	bool* Bloom;//写入SSTable的Bloom过滤器
+	
 public:
 	KVStore(const std::string &dir);
 
@@ -21,4 +27,6 @@ public:
 	void reset() override;
 
 	void scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string> > &list) override;
+
+	std::string getDir();//获取根目录
 };

@@ -3,6 +3,9 @@
 #include <cstdint>
 #include <string>
 #include <list>
+#include <iostream>
+
+
 
 class KVStoreAPI {
 public:
@@ -12,7 +15,7 @@ public:
 	 * there. Please refer to the c++ filesystem library
 	 * (https://en.cppreference.com/w/cpp/filesystem).
 	 */
-	KVStoreAPI(const std::string &dir) { }
+	KVStoreAPI(const std::string &dir) {}
 	//= delete 表示这个函数不能被调用
 	KVStoreAPI() = delete;
 
