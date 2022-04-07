@@ -48,7 +48,9 @@ void KVStore::put(uint64_t key, const string &s)
 	if(length > 2 * 1024 * 1024){
 		//文件大小超标，开始向有硬盘写入数据
 		string dir = this->getDir();
-		string file_path = dir + "/level-0/data0.sst";
+		string fileroad = "/level-0/data0.sst";
+		fileroad[13] = '0' + this->timeStamp;
+		string file_path = dir + fileroad;
 		ofstream data_file(file_path);
 		//write Header
 		char *writeIn = reinterpret_cast<char *>(&(this->timeStamp));
@@ -67,7 +69,9 @@ void KVStore::put(uint64_t key, const string &s)
 			writeIn = reinterpret_cast<char *>(&(Bloom[i]));
 			data_file.write(writeIn,1);
 		}
-		long offset = 32 + 10*1024 + key_count * 12;//the offset of the first element
+
+		int offset = 32 + 10*1024 + key_count * 12;//the offset of the first element
+		int put_offset = offset;
 		SKNode *p = this->Memtable.getMinEle();
 		SKNode *q = p;
 		//write key and offset
@@ -78,6 +82,13 @@ void KVStore::put(uint64_t key, const string &s)
 			offset += p->val.length();
 			p = p->forwards[0];
 		}
+
+		//write to sstablecache as the cache
+		SSTablecache myCache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),this->Memtable.getMaxkey(),
+		this->Memtable.getMinEle(),this->Bloom,put_offset);
+		//push the cache to the cache vector
+		this->acache.push_back(myCache);
+
 		//write value
 		for(int i = 0;i < key_count;++i){
 			strcpy(writeIn,q->val.c_str());
@@ -85,6 +96,7 @@ void KVStore::put(uint64_t key, const string &s)
 			//这相当与这条指令的二进制写入data_file << q->val;
 			q = q->forwards[0];
 		}
+
 		//clean the MemTable
 		this->Memtable.cleanMem();
 		this->key_count = 0;
@@ -95,10 +107,25 @@ void KVStore::put(uint64_t key, const string &s)
 		// to Insert the k-v after flush
 		this->Memtable.Insert(key,s);
 		this->key_count += 1;
+
+		//更新Bloom filter
+		unsigned int hash[4] = {0};
+		unsigned long long myKey = key;
+		MurmurHash3_x64_128(&myKey,sizeof(myKey), 1, hash);
+		for(int i = 0;i < 4;++i){
+			Bloom[hash[i] % 10272] = true;
+		}
 	}
 	else{
 		this->Memtable.Insert(key,s);
 		this->key_count += 1;
+		//更新Bloom filter
+		unsigned int hash[4] = {0};
+		unsigned long long myKey = key;
+		MurmurHash3_x64_128(&myKey,sizeof(myKey), 1, hash);
+		for(int i = 0;i < 4;++i){
+			Bloom[hash[i] % 10272] = true;
+		}
 	}
 	return;
 }
@@ -108,7 +135,37 @@ void KVStore::put(uint64_t key, const string &s)
  */
 std::string KVStore::get(uint64_t key)
 {
-	return this->Memtable.Search(key);
+	string val = this->Memtable.Search(key);
+	if(val != ""){
+		return val;
+	}
+	else{
+		//from end to begin,because that can find the most updated data
+		for(vector<SSTablecache>::iterator iter=acache.end();iter!=acache.begin();iter--){
+			int mes[2] ={0};
+        	if(iter->Search(key,mes)){
+				int num = iter - acache.begin();//算出是第几个文件
+				string dir = this->getDir();
+				string fileroad = "/level-0/data0.sst";
+				fileroad[13] = '0' + num;
+				string file_path = dir + fileroad;
+				int offset = mes[0];
+				int length = mes[1];
+				ifstream read_file(file_path);
+				read_file.seekg(offset,ios::beg);
+				char *buffer = new char[length];
+				read_file.read(buffer,length);
+				string ans = buffer;
+				if(ans == "~DELETED~"){
+					return "";
+				}
+				else{
+					return ans;
+				}
+			}
+    	}
+		return "";
+	}
 }
 /**
  * Delete the given key-value pair if it exists.

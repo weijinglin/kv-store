@@ -3,6 +3,7 @@
 #include "kvstore_api.h"
 #include "SkipList.h"
 #include "SSTable.h"
+#include <vector>
 
 class KVStore : public KVStoreAPI {
 	// You can add your implementation here
@@ -12,7 +13,8 @@ private:
 	unsigned long long timeStamp;//记录level0的时间戳
 	unsigned long long key_count;//记录写入SStable的键的数量
 	bool* Bloom;//写入SSTable的Bloom过滤器
-	
+	std::vector<SSTablecache> acache;//缓存sstable中的内容
+
 public:
 	KVStore(const std::string &dir);
 
