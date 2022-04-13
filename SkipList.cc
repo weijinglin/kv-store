@@ -45,7 +45,9 @@ void SkipList::Insert(uint64_t key, std::string value)
             else if(key == find->forwards[count_search-1]->key){
                 //to do some operation
                 is_find = true;
+                std::string oldval = find->forwards[count_search-1]->val;
                 find->forwards[count_search-1]->val = value;
+                this->bytes = this->bytes + value.length() - oldval.length();
                 break;
             }
             else{
@@ -56,7 +58,9 @@ void SkipList::Insert(uint64_t key, std::string value)
                 }
                 if(key == find->forwards[count_search-1]->key){
                     is_find = true;
+                    std::string oldval = find->forwards[count_search-1]->val;
                     find->forwards[count_search-1]->val = value;
+                    this->bytes = this->bytes + value.length() - oldval.length();
                     break;
                 }
                 else{
@@ -73,6 +77,7 @@ void SkipList::Insert(uint64_t key, std::string value)
         return;
     }
     else{
+            this->key_count += 1;
             this->bytes = KEY_LENGTH + OFFSET_LENGTH + this->bytes + value.length();
             int level = randomLevel();
            // cout << level << "is level" << endl;
@@ -110,6 +115,11 @@ void SkipList::Insert(uint64_t key, std::string value)
         }
     //cout << "insert cost : " << time_used.count() << endl;
     return;
+}
+
+unsigned long long SkipList::getKetcount()
+{
+    return this->key_count;
 }
 
 std::string SkipList::Search(uint64_t key)
@@ -220,11 +230,15 @@ uint64_t SkipList::getMinkey()
 void SkipList::cleanMem()
 {
     SKNode *n1 = head;
-    SKNode *n2;
+    SKNode *n2 = n1->forwards[0];
     while(n2 != NIL){
-        n2 = n1->forwards[0];
         n1->forwards[0] = n2->forwards[0];
         delete n2;
+        n2 = n1->forwards[0];
+    }
+    for(int i = 0;i < MAX_LEVEL;++i){
+        n1->forwards[i] = NIL;
     }
     this->bytes = 10240 + 32;
+    this->key_count = 0;
 }

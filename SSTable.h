@@ -20,11 +20,16 @@ private:
     vector<int> offset_array;//to store all the offset
 public:
     SSTablecache();
+    //复制构造函数，用于解决vector的push_back的问题
+    SSTablecache(const SSTablecache& a);
     //进行除了offset以外所有元素的构造
     SSTablecache(unsigned long long time,unsigned long long count,unsigned long long min,unsigned long long max,SKNode* p,bool *filter,int offset);
     ~SSTablecache();
     void pushOffset(int offset);
     //判断元素是否在对应的SSTable中
-    bool Search(unsigned long long key,int* message);
+    bool Search(unsigned long long &key,int* message);
+    //用于Debug的函数
+    void list_key();
+
 };
 

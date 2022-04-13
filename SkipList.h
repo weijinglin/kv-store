@@ -40,6 +40,7 @@ private:
     SKNode *NIL;
     unsigned long long s = 1;
     unsigned long long bytes;//记录当前跳表转化为SStable的时候的大小
+    unsigned long long key_count;//记录写入MemTable中键值的数量
     double my_rand();
     int randomLevel();
 
@@ -49,6 +50,7 @@ public:
         head = new SKNode(0, "", SKNodeType::HEAD);
         NIL = new SKNode(INT_MAX, "", SKNodeType::NIL);
         bytes = 10240 + 32;
+        key_count = 0;
         for (int i = 0; i < MAX_LEVEL; ++i)
         {
             head->forwards[i] = NIL;
@@ -63,6 +65,7 @@ public:
     SKNode* getMinEle();//获得最小的key对应的节点
     void ScanSearch(uint64_t key_start, uint64_t key_end,std::list<std::pair<uint64_t, std::string> > &list);
     void cleanMem();//clean the skipList
+    unsigned long long getKetcount();
     ~SkipList()
     {
         SKNode *n1 = head;

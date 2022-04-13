@@ -20,6 +20,8 @@ public:
 
 	~KVStore();
 
+	void resetBloom();
+
 	void put(uint64_t key, const std::string &s) override;
 
 	std::string get(uint64_t key) override;

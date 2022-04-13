@@ -45,6 +45,10 @@ void KVStore::put(uint64_t key, const string &s)
 {
 	unsigned long long lengthbefore = this->Memtable.getBytes();
 	unsigned long long length = lengthbefore + KEY_LENGTH + OFFSET_LENGTH + s.length();
+	string myString = this->Memtable.Search(key);
+	if(myString != ""){
+		length = lengthbefore + s.length() - myString.length();
+	}
 	if(length > 2 * 1024 * 1024){
 		//文件大小超标，开始向有硬盘写入数据
 		string dir = this->getDir();
@@ -53,7 +57,8 @@ void KVStore::put(uint64_t key, const string &s)
 		string file_path = dir + fileroad;
 		ofstream data_file(file_path);
 		//write Header
-		char *writeIn = reinterpret_cast<char *>(&(this->timeStamp));
+		this->key_count = this->Memtable.getKetcount();
+		const char *writeIn = reinterpret_cast<char *>(&(this->timeStamp));
 		data_file.write(writeIn,8);
 		writeIn = reinterpret_cast<char *>(&(this->key_count));
 		data_file.write(writeIn,8);
@@ -75,60 +80,73 @@ void KVStore::put(uint64_t key, const string &s)
 		SKNode *p = this->Memtable.getMinEle();
 		SKNode *q = p;
 		//write key and offset
-		for(int i = 0;i < key_count;++i){
-			data_file.write(reinterpret_cast<char *>(p->key),8);
-			data_file.write(reinterpret_cast<char *>(offset),8);
+		for(int i = 0;i < key_count-1;++i){
+			if(!p){
+				cout << "seg: " << i << endl;
+				cout << "key_count " << key_count << endl;
+ 			}
+			data_file.write(reinterpret_cast<char *>(&(p->key)),8);
+			data_file.write(reinterpret_cast<char *>(&(offset)),8);
 			//这相当与这条指令的二进制写入data_file << p->key << offset;
 			offset += p->val.length();
 			p = p->forwards[0];
 		}
-
+		int a = offset;
 		//write to sstablecache as the cache
 		SSTablecache myCache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),this->Memtable.getMaxkey(),
 		this->Memtable.getMinEle(),this->Bloom,put_offset);
 		//push the cache to the cache vector
+		myCache.list_key();
 		this->acache.push_back(myCache);
 
 		//write value
-		for(int i = 0;i < key_count;++i){
-			strcpy(writeIn,q->val.c_str());
+		for(int i = 0;i < key_count-1;++i){
+			writeIn = q->val.c_str();
 			data_file.write(writeIn,q->val.length());
 			//这相当与这条指令的二进制写入data_file << q->val;
 			q = q->forwards[0];
+			
 		}
 
 		//clean the MemTable
 		this->Memtable.cleanMem();
-		this->key_count = 0;
-		delete this->Bloom;
-		this->Bloom = new bool[10*1024];
+
+		//clean the Bloom filter
+		resetBloom();
+
 		this->timeStamp += 1;//timeStamp update
 
 		// to Insert the k-v after flush
 		this->Memtable.Insert(key,s);
-		this->key_count += 1;
 
 		//更新Bloom filter
 		unsigned int hash[4] = {0};
 		unsigned long long myKey = key;
 		MurmurHash3_x64_128(&myKey,sizeof(myKey), 1, hash);
 		for(int i = 0;i < 4;++i){
-			Bloom[hash[i] % 10272] = true;
+			Bloom[hash[i] % 10240] = true;
 		}
 	}
 	else{
 		this->Memtable.Insert(key,s);
-		this->key_count += 1;
 		//更新Bloom filter
 		unsigned int hash[4] = {0};
 		unsigned long long myKey = key;
 		MurmurHash3_x64_128(&myKey,sizeof(myKey), 1, hash);
 		for(int i = 0;i < 4;++i){
-			Bloom[hash[i] % 10272] = true;
+			Bloom[hash[i] % 10240] = true;
 		}
 	}
 	return;
 }
+
+void KVStore::resetBloom()
+{
+	for(int i = 0;i < 10240;++i){
+		Bloom[i] = 0;
+	}
+}
+
 /**
  * Returns the (string) value of the given key.
  * An empty string indicates not found.
@@ -141,7 +159,12 @@ std::string KVStore::get(uint64_t key)
 	}
 	else{
 		//from end to begin,because that can find the most updated data
-		for(vector<SSTablecache>::iterator iter=acache.end();iter!=acache.begin();iter--){
+		//cout << "distance : " << acache.end() - acache.begin() <<endl;
+		for(vector<SSTablecache>::iterator iter=acache.end()-1;iter !=acache.begin() - 1;iter--){
+			if(iter == acache.begin())
+			{
+				iter->list_key();
+			}
 			int mes[2] ={0};
         	if(iter->Search(key,mes)){
 				int num = iter - acache.begin();//算出是第几个文件
