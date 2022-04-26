@@ -96,8 +96,8 @@ void KVStore::put(uint64_t key, const string &s)
 		SSTablecache myCache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),this->Memtable.getMaxkey(),
 		this->Memtable.getMinEle(),this->Bloom,put_offset);
 		//push the cache to the cache vector
-		myCache.list_key();
 		this->acache.push_back(myCache);
+
 
 		//write value
 		for(int i = 0;i < key_count-1;++i){
@@ -161,10 +161,6 @@ std::string KVStore::get(uint64_t key)
 		//from end to begin,because that can find the most updated data
 		//cout << "distance : " << acache.end() - acache.begin() <<endl;
 		for(vector<SSTablecache>::iterator iter=acache.end()-1;iter !=acache.begin() - 1;iter--){
-			if(iter == acache.begin())
-			{
-				iter->list_key();
-			}
 			int mes[2] ={0};
         	if(iter->Search(key,mes)){
 				int num = iter - acache.begin();//算出是第几个文件

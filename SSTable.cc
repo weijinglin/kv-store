@@ -22,8 +22,8 @@ SSTablecache::SSTablecache(const SSTablecache& a)
     length = a.length;
     this->Bloom = new bool[10240];
     memcpy(Bloom,a.Bloom,10240);
-    this->key_array.reserve(key_count + 1);
-    this->offset_array.reserve(key_count + 1);
+    this->key_array.resize(key_count + 1);
+    this->offset_array.resize(key_count + 1);
     for(int i = 0;i < key_count;++i){
         this->key_array[i] = a.key_array[i];
         this->offset_array[i] = a.offset_array[i];
@@ -36,8 +36,8 @@ unsigned long long max,SKNode* p,bool *filter,int offset):timeStamp(time),key_co
     this->Bloom = new bool[10240];
     memcpy(Bloom,filter,10240);
     SKNode* NIL = new SKNode(INT_MAX, "", SKNodeType::NIL);
-    this->key_array.reserve(key_count + 1);
-    this->offset_array.reserve(key_count + 1);
+    this->key_array.resize(key_count + 1);
+    this->offset_array.resize(key_count + 1);
     int index = 0;
     while(p->val != ""){
         //this->key_array.push_back(p->key);
@@ -48,7 +48,6 @@ unsigned long long max,SKNode* p,bool *filter,int offset):timeStamp(time),key_co
         p = p->forwards[0];
         index++;
     }
-    cout <<"distance :" << key_array.end() - key_array.begin() << endl;
     this->length = offset;
 }
 
@@ -89,6 +88,8 @@ bool SSTablecache::Search(unsigned long long &key,int* message)
 SSTablecache::~SSTablecache()
 {
     delete Bloom;
+    this->key_array.clear();
+    this->offset_array.clear();
 }
 
 void SSTablecache::list_key()
