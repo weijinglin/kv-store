@@ -22,6 +22,7 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
 	if(!result){
 		string myFile = sstable + "/data0.sst";
 		ofstream sst(myFile.c_str());
+		sst.close();
 	}
 	else{
 		exit(0);
@@ -60,24 +61,28 @@ void KVStore::put(uint64_t key, const string &s)
 		fileroad = fileroad + ".sst";
 
 		string file_path = dir + fileroad;
-		ofstream data_file(file_path);
+		ofstream data_file(file_path,ios::out | ios::binary);
 		//write Header
 		this->key_count = this->Memtable.getKetcount();
 		const char *writeIn = reinterpret_cast<char *>(&(this->timeStamp));
-		data_file.write(writeIn,8);
+		//写入时间戳
+		data_file.write(reinterpret_cast<char *>(&(this->timeStamp)),8);
+		//写入key的个数
 		writeIn = reinterpret_cast<char *>(&(this->key_count));
-		data_file.write(writeIn,8);
+		data_file.write(reinterpret_cast<char *>(&(this->key_count)),8);
+
 		unsigned min = this->Memtable.getMinkey();
 		unsigned max = this->Memtable.getMaxkey();
+		//写入min和max
 		writeIn = reinterpret_cast<char *>(&min);
-		data_file.write(writeIn,8);
+		data_file.write(reinterpret_cast<char *>(&min),8);
 		writeIn = reinterpret_cast<char *>(&max);
-		data_file.write(writeIn,8);
+		data_file.write(reinterpret_cast<char *>(&max),8);
 		//这相当与这条指令的二进制写入data_file << this->timeStamp << this->key_count << this->Memtable.getMinkey() << this->Memtable.getMaxkey();
 		//write Bloom filter
 		for(int i = 0;i < 10240;++i){
-			writeIn = reinterpret_cast<char *>(&(Bloom[i]));
-			data_file.write(writeIn,1);
+			//writeIn = reinterpret_cast<char *>(&(Bloom[i]));
+			data_file.write(reinterpret_cast<char *>(&(Bloom[i])),1);
 		}
 
 		int offset = 32 + 10*1024 + key_count * 12;//the offset of the first element
@@ -85,17 +90,18 @@ void KVStore::put(uint64_t key, const string &s)
 		SKNode *p = this->Memtable.getMinEle();
 		SKNode *q = p;
 		//write key and offset
-		for(int i = 0;i < key_count-1;++i){
+		for(int i = 0;i < key_count;++i){
 			if(!p){
 				cout << "seg: " << i << endl;
 				cout << "key_count " << key_count << endl;
  			}
 			data_file.write(reinterpret_cast<char *>(&(p->key)),8);
-			data_file.write(reinterpret_cast<char *>(&(offset)),8);
+			data_file.write(reinterpret_cast<char *>(&(offset)),4);
 			//这相当与这条指令的二进制写入data_file << p->key << offset;
 			offset += p->val.length();
 			p = p->forwards[0];
 		}
+
 		int a = offset;
 		//write to sstablecache as the cache
 		SSTablecache myCache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),this->Memtable.getMaxkey(),
@@ -105,9 +111,8 @@ void KVStore::put(uint64_t key, const string &s)
 
 
 		//write value
-		for(int i = 0;i < key_count-1;++i){
-			writeIn = q->val.c_str();
-			data_file.write(writeIn,q->val.length());
+		for(int i = 0;i < key_count;++i){
+			data_file.write(q->val.c_str(),q->val.length());
 			//这相当与这条指令的二进制写入data_file << q->val;
 			q = q->forwards[0];
 		}
@@ -133,6 +138,18 @@ void KVStore::put(uint64_t key, const string &s)
 		for(int i = 0;i < 4;++i){
 			Bloom[hash[i] % 10240] = true;
 		}
+		data_file.close();
+
+		//some code used for debug
+		// ifstream read_file(file_path);
+		// read_file.seekg(33096,ios::beg);
+		// if(read_file.eof()){
+		// 	cout << "wrong!" << endl;
+		// }
+		// char *buffer = new char[2];
+		// read_file.read(buffer,1);
+		// buffer[1] = '\0';
+		
 	}
 	else{
 		this->Memtable.Insert(key,s);
@@ -154,6 +171,8 @@ void KVStore::resetBloom()
 	}
 }
 
+int find_count = 0;
+
 /**
  * Returns the (string) value of the given key.
  * An empty string indicates not found.
@@ -172,6 +191,11 @@ std::string KVStore::get(uint64_t key)
 			//used for debug
 			//cout << "timestamp  : " <<  iter->getTime() << endl;
         	if(iter->Search(key,mes)){
+				// cout << "find : " << find_count << endl;
+				find_count++;
+				if(find_count == 3451){
+					cout << "hit!" << endl;
+				}
 				int num = iter - acache.begin();//算出是第几个文件
 				string dir = this->getDir();
 				string fileroad = "/level-0/data";
@@ -182,12 +206,16 @@ std::string KVStore::get(uint64_t key)
 				string file_path = dir + fileroad;
 				int offset = mes[0];
 				int length = mes[1];
-				ifstream read_file(file_path);
+				ifstream read_file(file_path,ios::in|ios::binary);
 				read_file.seekg(offset,ios::beg);
+				if(read_file.eof()){
+					cout << "wrong!" << endl;
+				}
 				char *buffer = new char[length + 1];
 				read_file.read(buffer,length);
 				buffer[length] = '\0';
 				string ans = buffer;
+				delete buffer;
 				if(ans == "~DELETED~"){
 					return "";
 				}
