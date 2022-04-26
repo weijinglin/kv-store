@@ -178,6 +178,9 @@ void KVStore::resetBloom()
  */
 std::string KVStore::get(uint64_t key)
 {
+	if(key == 1901){
+		int debug = 0;
+	}
 	string val = this->Memtable.Search(key);
 	if(val != ""){
 		return val;
