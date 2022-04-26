@@ -52,8 +52,13 @@ void KVStore::put(uint64_t key, const string &s)
 	if(length > 2 * 1024 * 1024){
 		//文件大小超标，开始向有硬盘写入数据
 		string dir = this->getDir();
-		string fileroad = "/level-0/data0.sst";
-		fileroad[13] = '0' + this->timeStamp;
+
+		string fileroad = "/level-0/data";
+		string timenum = std::to_string(this->timeStamp);
+		//cout << timenum << endl;
+		fileroad = fileroad + timenum;
+		fileroad = fileroad + ".sst";
+
 		string file_path = dir + fileroad;
 		ofstream data_file(file_path);
 		//write Header
@@ -105,7 +110,6 @@ void KVStore::put(uint64_t key, const string &s)
 			data_file.write(writeIn,q->val.length());
 			//这相当与这条指令的二进制写入data_file << q->val;
 			q = q->forwards[0];
-			
 		}
 
 		//clean the MemTable
@@ -113,6 +117,9 @@ void KVStore::put(uint64_t key, const string &s)
 
 		//clean the Bloom filter
 		resetBloom();
+		
+		//used for debug
+		//cout << "timestamp  : " <<  this->timeStamp << endl;
 
 		this->timeStamp += 1;//timeStamp update
 
@@ -160,20 +167,26 @@ std::string KVStore::get(uint64_t key)
 	else{
 		//from end to begin,because that can find the most updated data
 		//cout << "distance : " << acache.end() - acache.begin() <<endl;
-		for(vector<SSTablecache>::iterator iter=acache.end()-1;iter !=acache.begin() - 1;iter--){
+		for(vector<SSTablecache>::iterator iter=acache.begin();iter != acache.end();iter++){
 			int mes[2] ={0};
+			//used for debug
+			//cout << "timestamp  : " <<  iter->getTime() << endl;
         	if(iter->Search(key,mes)){
 				int num = iter - acache.begin();//算出是第几个文件
 				string dir = this->getDir();
-				string fileroad = "/level-0/data0.sst";
-				fileroad[13] = '0' + num;
+				string fileroad = "/level-0/data";
+				string timenum = std::to_string(iter->getTime());
+				//cout << timenum << endl;
+				fileroad = fileroad + timenum;
+				fileroad = fileroad + ".sst";
 				string file_path = dir + fileroad;
 				int offset = mes[0];
 				int length = mes[1];
 				ifstream read_file(file_path);
 				read_file.seekg(offset,ios::beg);
-				char *buffer = new char[length];
+				char *buffer = new char[length + 1];
 				read_file.read(buffer,length);
+				buffer[length] = '\0';
 				string ans = buffer;
 				if(ans == "~DELETED~"){
 					return "";

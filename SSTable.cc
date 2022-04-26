@@ -22,6 +22,7 @@ SSTablecache::SSTablecache(const SSTablecache& a)
     length = a.length;
     this->Bloom = new bool[10240];
     memcpy(Bloom,a.Bloom,10240);
+
     this->key_array.resize(key_count + 1);
     this->offset_array.resize(key_count + 1);
     for(int i = 0;i < key_count;++i){
@@ -35,6 +36,7 @@ unsigned long long max,SKNode* p,bool *filter,int offset):timeStamp(time),key_co
 {
     this->Bloom = new bool[10240];
     memcpy(Bloom,filter,10240);
+
     SKNode* NIL = new SKNode(INT_MAX, "", SKNodeType::NIL);
     this->key_array.resize(key_count + 1);
     this->offset_array.resize(key_count + 1);
@@ -59,7 +61,13 @@ void SSTablecache::pushOffset(int offset)
 //判断元素是否在对应的SSTable中,如果找到了则返回对应true,并把offset和length存在message中
 bool SSTablecache::Search(unsigned long long &key,int* message)
 {
+    
     unsigned int hash[4] = {0};
+
+    // for(int i = 0; i < 10240;++i){
+    //     cout << Bloom[i] << " ";
+    // }
+
     MurmurHash3_x64_128(&key,sizeof(key),1,hash);
     if(Bloom[hash[0]%10240] && Bloom[hash[1]%10240] && Bloom[hash[2]%10240] && Bloom[hash[3]%10240]){
         auto first = std::lower_bound(this->key_array.begin(), this->key_array.end(), key);
@@ -99,4 +107,9 @@ void SSTablecache::list_key()
         std::cout << *iter << " ";
     }
     std::cout.flush();
+}
+
+unsigned long long SSTablecache::getTime()
+{
+    return this->timeStamp;
 }

@@ -31,5 +31,6 @@ public:
     //用于Debug的函数
     void list_key();
 
+    unsigned long long getTime();
 };
 
