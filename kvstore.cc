@@ -104,7 +104,7 @@ void KVStore::put(uint64_t key, const string &s)
 
 		int a = offset;
 		//write to sstablecache as the cache
-		SSTablecache myCache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),this->Memtable.getMaxkey(),
+		SSTablecache *myCache = new SSTablecache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),this->Memtable.getMaxkey(),
 		this->Memtable.getMinEle(),this->Bloom,put_offset);
 		//push the cache to the cache vector
 		this->acache.push_back(myCache);
@@ -171,7 +171,6 @@ void KVStore::resetBloom()
 	}
 }
 
-int find_count = 0;
 
 /**
  * Returns the (string) value of the given key.
@@ -186,26 +185,22 @@ std::string KVStore::get(uint64_t key)
 	else{
 		//from end to begin,because that can find the most updated data
 		//cout << "distance : " << acache.end() - acache.begin() <<endl;
-		for(vector<SSTablecache>::iterator iter=acache.begin();iter != acache.end();iter++){
+		for(vector<SSTablecache*>::iterator iter=acache.begin();iter != acache.end();iter++){
 			int mes[2] ={0};
 			//used for debug
 			//cout << "timestamp  : " <<  iter->getTime() << endl;
-        	if(iter->Search(key,mes)){
+        	if((*iter)->Search(key,mes)){
 				// cout << "find : " << find_count << endl;
-				find_count++;
-				if(find_count == 3451){
-					cout << "hit!" << endl;
-				}
 				int num = iter - acache.begin();//算出是第几个文件
 				string dir = this->getDir();
 				string fileroad = "/level-0/data";
-				string timenum = std::to_string(iter->getTime());
+				string timenum = std::to_string((*iter)->getTime());
 				//cout << timenum << endl;
 				fileroad = fileroad + timenum;
 				fileroad = fileroad + ".sst";
 				string file_path = dir + fileroad;
 				int offset = mes[0];
-				int length = mes[1];
+				unsigned long long length = mes[1];
 				ifstream read_file(file_path,ios::in|ios::binary);
 				read_file.seekg(offset,ios::beg);
 				if(read_file.eof()){

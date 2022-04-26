@@ -51,6 +51,7 @@ unsigned long long max,SKNode* p,bool *filter,int offset):timeStamp(time),key_co
         index++;
     }
     this->length = offset;
+    delete NIL;
 }
 
 void SSTablecache::pushOffset(int offset)
@@ -76,7 +77,7 @@ bool SSTablecache::Search(unsigned long long &key,int* message)
         if(!(first == this->key_array.end()) && (*first == key)){
             int distance = first - this->key_array.begin();
             message[0] = this->offset_array[distance];
-            if(first + 1 == this->key_array.end()){
+            if(distance + 1 == this->key_count){
                 message[1] = length - this->offset_array[distance];
             }
             else{
