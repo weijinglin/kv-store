@@ -178,9 +178,6 @@ void KVStore::resetBloom()
  */
 std::string KVStore::get(uint64_t key)
 {
-	if(key == 1901){
-		int debug = 0;
-	}
 	string val = this->Memtable.Search(key);
 	if(val != ""){
 		return val;
@@ -192,9 +189,6 @@ std::string KVStore::get(uint64_t key)
 			int mes[2] ={0};
 			//used for debug
 			//cout << "timestamp  : " <<  iter->getTime() << endl;
-			if(iter == acache.begin()){
-				int debug = 0;
-			}
 
         	if((*iter)->Search(key,mes)){
 				// cout << "find : " << find_count << endl;
@@ -235,7 +229,24 @@ std::string KVStore::get(uint64_t key)
  */
 bool KVStore::del(uint64_t key)
 {
-	return this->Memtable.Delete(key);
+	string val = this->get(key);
+	//先判断字符串存不存在
+	if(val == ""){
+		//不存在则return false
+		return false;
+	}
+	if(val == "~DELETED~"){
+		return false;
+	}
+
+	bool jug = this->Memtable.Delete(key);//返回true代表跳表中有并且已经插入，若为false则代表跳表中没有需要手动put
+	if(jug){
+		return true;
+	}
+	else{
+		this->put(key,"~DELETED~");
+	}
+	return true;
 }
 
 /**

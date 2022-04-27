@@ -190,14 +190,17 @@ bool SkipList::Delete(uint64_t key)
                 if(update[i]->forwards[i]->val == "~DELETED~"){
                     return false;
                 }
+                //此处要更新bytes大小
+                this->bytes = this->bytes + 9 - update[i]->forwards[i]->val.length();
                 update[i]->forwards[i]->val = "~DELETED~";
                 return true;
             }
             else{
-                return true;
+                return false;
             }
         }
     }
+
     return false;
     //cout << "delete cost : " << time_used.count() << endl;
 }

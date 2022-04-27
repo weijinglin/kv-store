@@ -30,15 +30,16 @@ private:
 		}
 		phase();
 
-		//用于调试的if语句
-		if(max > 600){
-			int a = 0;
-		}
 
 		// Test after all insertions
 		for (i = 0; i < max; ++i)
 			EXPECT(std::string(i+1, 's'), store.get(i));
 		phase();
+
+		//用于调试的if语句
+		if(max > 600){
+			int a = 0;
+		}
 
 		// Test deletions
 		for (i = 0; i < max; i+=2)
