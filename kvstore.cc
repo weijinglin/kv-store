@@ -188,10 +188,14 @@ std::string KVStore::get(uint64_t key)
 	else{
 		//from end to begin,because that can find the most updated data
 		//cout << "distance : " << acache.end() - acache.begin() <<endl;
-		for(vector<SSTablecache*>::iterator iter=acache.begin();iter != acache.end();iter++){
+		for(vector<SSTablecache*>::iterator iter=acache.end()-1;iter != acache.begin()-1;iter--){
 			int mes[2] ={0};
 			//used for debug
 			//cout << "timestamp  : " <<  iter->getTime() << endl;
+			if(iter == acache.begin()){
+				int debug = 0;
+			}
+
         	if((*iter)->Search(key,mes)){
 				// cout << "find : " << find_count << endl;
 				int num = iter - acache.begin();//算出是第几个文件
