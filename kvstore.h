@@ -3,6 +3,7 @@
 #include "kvstore_api.h"
 #include "SkipList.h"
 #include "SSTable.h"
+#include "level.h"
 #include <vector>
 
 class KVStore : public KVStoreAPI {
@@ -10,10 +11,11 @@ class KVStore : public KVStoreAPI {
 private:
 	SkipList Memtable;//用跳表实现的内存存储 
 	std::string rootDir;//存储多级存储的根目录
-	unsigned long long timeStamp;//记录level0的时间戳
+	unsigned long long timeStamp;//记录SSTable的时间戳
 	unsigned long long key_count;//记录写入SStable的键的数量
 	bool* Bloom;//写入SSTable的Bloom过滤器
 	std::vector<SSTablecache*> acache;//缓存sstable中的内容
+	//std::vector<Level*> all_level; //存储各级的level的缓存
 
 public:
 	KVStore(const std::string &dir);

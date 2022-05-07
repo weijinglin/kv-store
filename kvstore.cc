@@ -54,6 +54,7 @@ void KVStore::put(uint64_t key, const string &s)
 		//文件大小超标，开始向有硬盘写入数据
 		string dir = this->getDir();
 
+		//准备文件信息
 		string fileroad = "/level-0/data";
 		string timenum = std::to_string(this->timeStamp);
 		//cout << timenum << endl;
@@ -62,21 +63,27 @@ void KVStore::put(uint64_t key, const string &s)
 
 		string file_path = dir + fileroad;
 		ofstream data_file(file_path,ios::out | ios::binary);
-		//write Header
+
+		//准备将要写入文件的内容
 		this->key_count = this->Memtable.getKetcount();
-		const char *writeIn = reinterpret_cast<char *>(&(this->timeStamp));
+		unsigned min = this->Memtable.getMinkey();
+		unsigned max = this->Memtable.getMaxkey();
+		int offset = 32 + 10*1024 + key_count * 12;//the offset of the first element
+		int put_offset = offset;
+
+		//write to sstablecache as the cache
+		SSTablecache *myCache = new SSTablecache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),this->Memtable.getMaxkey(),
+		this->Memtable.getMinEle(),this->Bloom,put_offset);
+		//push the cache to the cache vector
+		this->acache.push_back(myCache);
+
+
 		//写入时间戳
 		data_file.write(reinterpret_cast<char *>(&(this->timeStamp)),8);
 		//写入key的个数
-		writeIn = reinterpret_cast<char *>(&(this->key_count));
 		data_file.write(reinterpret_cast<char *>(&(this->key_count)),8);
-
-		unsigned min = this->Memtable.getMinkey();
-		unsigned max = this->Memtable.getMaxkey();
 		//写入min和max
-		writeIn = reinterpret_cast<char *>(&min);
 		data_file.write(reinterpret_cast<char *>(&min),8);
-		writeIn = reinterpret_cast<char *>(&max);
 		data_file.write(reinterpret_cast<char *>(&max),8);
 		//这相当与这条指令的二进制写入data_file << this->timeStamp << this->key_count << this->Memtable.getMinkey() << this->Memtable.getMaxkey();
 		//write Bloom filter
@@ -84,9 +91,6 @@ void KVStore::put(uint64_t key, const string &s)
 			//writeIn = reinterpret_cast<char *>(&(Bloom[i]));
 			data_file.write(reinterpret_cast<char *>(&(Bloom[i])),1);
 		}
-
-		int offset = 32 + 10*1024 + key_count * 12;//the offset of the first element
-		int put_offset = offset;
 		SKNode *p = this->Memtable.getMinEle();
 		SKNode *q = p;
 		//write key and offset
@@ -102,14 +106,6 @@ void KVStore::put(uint64_t key, const string &s)
 			p = p->forwards[0];
 		}
 
-		int a = offset;
-		//write to sstablecache as the cache
-		SSTablecache *myCache = new SSTablecache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),this->Memtable.getMaxkey(),
-		this->Memtable.getMinEle(),this->Bloom,put_offset);
-		//push the cache to the cache vector
-		this->acache.push_back(myCache);
-
-
 		//write value
 		for(int i = 0;i < key_count;++i){
 			data_file.write(q->val.c_str(),q->val.length());
@@ -123,8 +119,6 @@ void KVStore::put(uint64_t key, const string &s)
 		//clean the Bloom filter
 		resetBloom();
 		
-		//used for debug
-		//cout << "timestamp  : " <<  this->timeStamp << endl;
 
 		this->timeStamp += 1;//timeStamp update
 
@@ -138,18 +132,8 @@ void KVStore::put(uint64_t key, const string &s)
 		for(int i = 0;i < 4;++i){
 			Bloom[hash[i] % 10240] = true;
 		}
-		data_file.close();
 
-		//some code used for debug
-		// ifstream read_file(file_path);
-		// read_file.seekg(33096,ios::beg);
-		// if(read_file.eof()){
-		// 	cout << "wrong!" << endl;
-		// }
-		// char *buffer = new char[2];
-		// read_file.read(buffer,1);
-		// buffer[1] = '\0';
-		
+		data_file.close();
 	}
 	else{
 		this->Memtable.Insert(key,s);
