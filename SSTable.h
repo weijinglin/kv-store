@@ -31,6 +31,12 @@ public:
     //用于Debug的函数
     void list_key();
 
+    unsigned long long getkey_min();
+
+    unsigned long long getkey_max();
+
     unsigned long long getTime();
+
+    unsigned long long getkey_Count();
 };
 

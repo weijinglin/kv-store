@@ -14,8 +14,9 @@ private:
 	unsigned long long timeStamp;//记录SSTable的时间戳
 	unsigned long long key_count;//记录写入SStable的键的数量
 	bool* Bloom;//写入SSTable的Bloom过滤器
-	std::vector<SSTablecache*> acache;//缓存sstable中的内容
-	//std::vector<Level*> all_level; //存储各级的level的缓存
+	//std::vector<SSTablecache*> acache;//缓存sstable中的内容
+	std::vector<Level*> all_level; //存储各级的level的缓存
+	int level;//用来表示目录的嵌套的级数
 
 public:
 	KVStore(const std::string &dir);
@@ -35,4 +36,8 @@ public:
 	void scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string> > &list) override;
 
 	std::string getDir();//获取根目录
+
+	void w_file(SSTablecache* myCache.int index,int level);//简单的用于正常的文件写入
+
+	void do_Compac(SSTablecache *myCache);
 };

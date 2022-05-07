@@ -114,3 +114,18 @@ unsigned long long SSTablecache::getTime()
 {
     return this->timeStamp;
 }
+
+unsigned long long SSTablecache::getkey_min()
+{
+    return this->key_min;
+}
+
+unsigned long long SSTablecache::getkey_max()
+{
+    return this->key_max;
+}
+
+unsigned long long SSTablecache::getkey_Count()
+{
+    return this->key_count;
+}
