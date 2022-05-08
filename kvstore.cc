@@ -65,8 +65,16 @@ void KVStore::put(uint64_t key, const string &s)
 		this->Memtable.getMinEle(),this->Bloom,put_offset);
 		//push the cache to the cache vector
 		
-		//write to file
-		w_file(myCache);
+		//deal with compaction
+		//do_Compac(myCache);
+		//这里采用先插入后优化的策略
+		int file_count = this->all_level.at(0)->getCount();
+		myCache->setindex(file_count);
+		myCache->setlevel(0);
+		w_file(myCache,file_count,0);
+
+		//now check for the compaction
+		do_Compac();
 
 		//clean the MemTable
 		this->Memtable.cleanMem();
@@ -103,66 +111,94 @@ void KVStore::put(uint64_t key, const string &s)
 	return;
 }
 
-void KVStore::do_Compac(SSTablecache *myCache)
+void KVStore::do_Compac()
 {
-	//进行SSTable缓存方式的判定
-		if(level == 0){
-			Level *in_level = new Level(0);
-			this->all_level.push_back(in_level);
-			myCache->setlevel(0);
-			myCache->setindex(0);
-			in_level->put_SSTable(myCache);
-			w_file(myCache,0,0);
-			level++;
-			return;
+	//首先进行判定
+	if(this->all_level.at(0)->getCount() >= 3){
+		//触发compaction
+		int check_level = 1;//used to check for all the level compaction condition
+		//先处理level = 0的情况
+		vector<SSTablecache*> last_level;//存上一层有问题的SSTable
+		vector<SSTablecache*> this_level;//存这一层被命中的SSTable
+		//把level-0的所有SSTable都进行compaction的处理
+		for(int i =0;i < this->all_level.at(0)->getCount();++i){
+			last_level.push_back(this->all_level.at(0)->find_cache(i));
 		}
-		else{
-			if(this->all_level.at(0)->getCount() == 1){
-				myCache->setlevel(0);
-				myCache->setindex(1);
-				this->all_level.at(0)->put_SSTable(myCache);
-				w_file(myCache,1,0);
-				return;
-			}
-			else{
-				//do Compaction
-				//首先先看看对应的数据的目录在不在，不在的话要创建对应的level目录
-
-				//先得到相关区间
-				uint64_t ckey_min = this->all_level.at(0)->find_cache(0)->getkey_min() >
-				this->all_level.at(0)->find_cache(1)->getkey_min() ? 
-				 this->all_level.at(0)->find_cache(0)->getkey_min() :
-				this->all_level.at(0)->find_cache(1)->getkey_min();
-				uint64_t ckey_max = this->all_level.at(0)->find_cache(0)->getkey_max() >
-				this->all_level.at(0)->find_cache(1)->getkey_max() ? 
-				 this->all_level.at(0)->find_cache(0)->getkey_max() :
-				this->all_level.at(0)->find_cache(1)->getkey_max();
-
-				ckey_max = ckey_max >= myCache->getkey_max() ? ckey_max : myCache->getkey_max();
-				ckey_min = ckey_min <= myCache->getkey_min() ? ckey_min : myCache->getkey_min();
-
-				//在level-1中进行寻找关联文件
-				if(level == 1){
-					//level 还没有数据的情况
-					Level* in_level = new Level(1);
-					this->all_level.push_back(in_level);
-					level++;
-					//先生成对应的目录
-					string dir = this->getDir();
-					string sstable = dir + "/level-1";
-					int result = utils::mkdir(sstable.c_str());
-
-					//初始化归并排序的列表
-					vector<SSTablecache *> sort_list;
-					sort_list.push_back(this->all_level.at(0)->find_cache(0));
-					sort_list.push_back(this->all_level.at(0)->find_cache(1));
-					sort_list.push_back(myCache);
-
-					//此处生成文件的策略采用运动SSTable的下表index来标识
-
-				}
+		uint64_t k_min = get_minkey(last_level);
+		uint64_t k_max = get_maxkey(last_level);
+		//把level-1中符合要求的SSTable写入
+		for(int i = 0;i < this->all_level.at(1)->getCount();++i){
+			if(isCover(k_min,k_max,this->all_level.at(1)->find_cache(i)->getkey_min(),this->all_level.at(1)->find_cache(i)->getkey_max())){
+				this_level.push_back(this->all_level.at(1)->find_cache(i));
 			}
 		}
+
+		//正式开始处理
+		vector<SkipList *> tiny_cache;//用于缓存将要写入level-1的内容
+		kv_box* a_cache = new kv_box((2*1024*1024-10240-32)/12);//存储tiny_cache获取数据的所需要的信息
+	
+		//定义对应的指针并且进行初始化
+		uint64_t counter = 0;
+		uint64_t* la_pointer = new uint64_t(last_level.size());
+		for(int i = 0;i < last_level.size();++i){
+			la_pointer[i] = 0;
+			counter += this->all_level.at(0)->find_cache(i)->getkey_Count();
+		}
+
+		kv_box *la_box = new kv_box();
+		//先对level-0进行归并排序
+		while(true){
+			int hit = -1;
+			for(int i= 0;i < last_level.size();++i){
+				int tmp_min = UINT64_MAX;
+				if(tmp_min > this->all_level.at(0)->find_cache(i)->getKey_index(la_pointer[i])){
+					tmp_min = this->all_level.at(0)->find_cache(i)->getKey_index(la_pointer[i]);
+					hit = i;
+				}	
+			}
+			
+		}
+
+
+
+
+		//后处理level >= 1的情况 
+		while(this->all_level.at(check_level)->getCount() >= (1 << (check_level+1) + 1)){
+
+		}
+	}
+}
+
+bool isCover(uint64_t k_min,uint64_t k_max,uint64_t ck_min,uint64_t ck_max){
+	if(k_max < ck_min){
+		return false;
+	}
+	if(k_min > ck_max){
+		return false;
+	}
+	return true;
+}
+
+uint64_t get_minkey(vector<SSTablecache*> &s)
+{
+	int min = UINT64_MAX;
+	for(int i = 0;i < s.size();++i){
+		if(min > s.at(i)->getkey_min()){
+			min = s.at(i)->getkey_min();
+		}
+	}
+	return min;
+}
+
+uint64_t get_maxkey(vector<SSTablecache*> &s)
+{
+	int max = -1;
+	for(int i = 0;i < s.size();++i){
+		if(max < s.at(i)->getkey_min()){
+			max = s.at(i)->getkey_min();
+		}
+	}
+	return max;
 }
 
 void KVStore::w_file(SSTablecache* myCache.int index,int level)
@@ -229,16 +265,6 @@ void KVStore::resetBloom()
 	for(int i = 0;i < 10240;++i){
 		Bloom[i] = 0;
 	}
-}
-
-kv_box* KVStore::MergeSort(vector<SSTablecache *> &sort_list)
-{
-	length = 0;
-	int count = sort_list.size();
-	//采用多路归并的算法
-
-	
-
 }
 
 

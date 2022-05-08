@@ -25,11 +25,11 @@ SSTablecache::SSTablecache(const SSTablecache& a)
     this->Bloom = new bool[10240];
     memcpy(Bloom,a.Bloom,10240);
 
-    this->key_array.resize(key_count);
-    this->offset_array.resize(key_count);
+    this->kv_array.resize(key_count);
+    kv_pair *p;
     for(int i = 0;i < key_count;++i){
-        this->key_array[i] = a.key_array[i];
-        this->offset_array[i] = a.offset_array[i];
+        p = new kv_pair(a.kv_array.at(i));
+        this->kv_array.push_back(p);
     }
     this->index = a.index;
     this->level = a.level;
@@ -42,14 +42,12 @@ unsigned long long max,SKNode* p,bool *filter,int offset):timeStamp(time),key_co
     memcpy(Bloom,filter,10240);
 
     SKNode* NIL = new SKNode(INT_MAX, "", SKNodeType::NIL);
-    this->key_array.resize(key_count);
-    this->offset_array.resize(key_count);
+    this->kv_array.resize(key_count);
     int index = 0;
+    kv_pair *gen_kv;
     while(p->val != ""){
-        //this->key_array.push_back(p->key);
-        this->key_array[index] = (p->key);
-        //this->pushOffset(offset);
-        this->offset_array[index] = offset;
+        gen_kv = new kv_pair(p->key,offset,p->val.length);
+        this->kv_array.push_back(gen_kv);
         offset += p->val.length();
         p = p->forwards[0];
         index++;
@@ -58,11 +56,6 @@ unsigned long long max,SKNode* p,bool *filter,int offset):timeStamp(time),key_co
     this->index = 0;
     this->level = 0;
     delete NIL;
-}
-
-void SSTablecache::pushOffset(int offset)
-{
-    this->offset_array.push_back(offset);
 }
 
 //判断元素是否在对应的SSTable中,如果找到了则返回对应true,并把offset和length存在message中
@@ -173,4 +166,14 @@ kv_box* SSTablecache::to_kv_box()
         }
     }
     return val;
+}
+
+uint64_t SSTablecache::getKey_index(uint64_t index)
+{
+    return this->key_array.at(index);
+}
+
+int SSTablecache::getoff_index(uint64_t index)
+{
+    return this->offset_array.at(index);
 }
