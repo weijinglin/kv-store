@@ -140,33 +140,70 @@ void KVStore::do_Compac()
 		//定义对应的指针并且进行初始化
 		uint64_t counter = 0;
 		uint64_t* la_pointer = new uint64_t(last_level.size());
+		bool *unused = new bool(last_level.size());//用于判断第i个SSTable是否被遍历完
 		for(int i = 0;i < last_level.size();++i){
 			la_pointer[i] = 0;
+			unused[i] = false;
 			counter += this->all_level.at(0)->find_cache(i)->getkey_Count();
 		}
 
-		kv_box *la_box = new kv_box();
+		kv_box *la_box = new kv_box(counter);
+		uint64_t count = 0;
 		//先对level-0进行归并排序
 		while(true){
 			int hit = -1;
+			int t_off = 0;
+			int len = 0;
+			int tmp_min = UINT64_MAX;
+			bool jug = true;
 			for(int i= 0;i < last_level.size();++i){
-				int tmp_min = UINT64_MAX;
-				if(tmp_min > this->all_level.at(0)->find_cache(i)->getKey_index(la_pointer[i])){
-					tmp_min = this->all_level.at(0)->find_cache(i)->getKey_index(la_pointer[i]);
+				if(tmp_min > this->all_level.at(0)->find_cache(i)->get_pair(la_pointer[i]).key){
+					tmp_min = this->all_level.at(0)->find_cache(i)->get_pair(la_pointer[i]).key;
+					t_off = this->all_level.at(0)->find_cache(i)->get_pair(la_pointer[i]).offset;
+					len = this->all_level.at(0)->find_cache(i)->get_pair(la_pointer[i]).length;
 					hit = i;
-				}	
+				}
 			}
-			
+
+			la_box[count].index = this->all_level.at(0)->find_cache(hit)->getindex();
+			la_box[count].data.key = tmp_min;
+			la_box[count].level = 0;
+			la_box[count].timestamp = this->all_level.at(0)->find_cache(hit)->getTime();
+			la_box[count].data.offset = t_off;
+			la_box[count].data.length = len;
+
+			//更新循环参量
+			count++;
+			la_pointer[hit]++;
+
+			for(int i= 0;i < last_level.size();++i){
+				if(la_pointer[i] == last_level.at(i)->getkey_Count()){
+					unused[i] = true;
+				}
+			}
+			for(int i= 0;i < last_level.size();++i){
+				jug = jug && unused[i];
+			}
+			if(jug){
+				break;
+			}
 		}
 
-
-
+		//进行level-0的简单的Merge,由于块内有序，可以把level-n(n > 0)当作块内有序
+		if(this_level.size() > 0){
+			Merge_l_zero(la_box,this_level);
+		}
 
 		//后处理level >= 1的情况 
 		while(this->all_level.at(check_level)->getCount() >= (1 << (check_level+1) + 1)){
 
 		}
 	}
+}
+
+void KVStore::Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s)
+{
+	//进行一个两路的归并排序
 }
 
 bool isCover(uint64_t k_min,uint64_t k_max,uint64_t ck_min,uint64_t ck_max){

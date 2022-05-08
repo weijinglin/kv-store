@@ -70,7 +70,7 @@ private:
     int length;//the length of the SSTable
     bool *Bloom;
 
-    vector<kv_pair*> kv_array;
+    vector<kv_pair> kv_array;
 
     //存储缓冲区文件存储位置的信息
     int index;
@@ -103,9 +103,7 @@ public:
 
     void setlevel(int level);
 
-    uint64_t getKey_index(uint64_t index);
-
-    int getoff_index(uint64_t index);
+    kv_pair get_pair(uint64_t index);
 
     kv_box* to_kv_box();
 };

@@ -41,4 +41,6 @@ public:
 	void w_file(SSTablecache* myCache.int index,int level);//简单的用于正常的文件写入
 
 	void do_Compac();
+
+	void Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s);
 };
