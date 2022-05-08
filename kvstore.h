@@ -42,5 +42,5 @@ public:
 
 	void do_Compac();
 
-	void Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s);
+	void Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s,vector<SkipList*> &mem);
 };

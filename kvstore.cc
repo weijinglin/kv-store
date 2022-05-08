@@ -191,7 +191,7 @@ void KVStore::do_Compac()
 
 		//进行level-0的简单的Merge,由于块内有序，可以把level-n(n > 0)当作块内有序
 		if(this_level.size() > 0){
-			Merge_l_zero(la_box,this_level);
+			Merge_l_zero(la_box,this_level,tiny_caches);
 		}
 
 		//后处理level >= 1的情况 
@@ -201,9 +201,12 @@ void KVStore::do_Compac()
 	}
 }
 
-void KVStore::Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s)
+void KVStore::Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s,vector<SkipList*> &mem)
 {
 	//进行一个两路的归并排序
+	kv_box* a_cache = new kv_box((2*1024*1024-10240-32)/12);//存储tiny_cache获取数据的所需要的信息
+	kv_box* compare = s.at(0)->to_kv_box();
+	
 }
 
 bool isCover(uint64_t k_min,uint64_t k_max,uint64_t ck_min,uint64_t ck_max){

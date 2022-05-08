@@ -134,7 +134,7 @@ std::string SkipList::Search(uint64_t key)
             }
             if(p->forwards[level-1]->key == key){
                 if(p->forwards[level-1]->val == "~DELETED~"){
-                    return "";
+                    return "~DELETED~";
                 }
                 return p->forwards[level-1]->val;
             }

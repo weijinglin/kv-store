@@ -28,4 +28,6 @@ public:
     int getLevel();
 
     uint64_t getCount();
+
+    void de_table(uint64_t index);
 };
