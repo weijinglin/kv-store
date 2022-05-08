@@ -5,7 +5,7 @@ Level::Level(int l)
 {
     count = 0;
     level = l;
-    this->SSt_chunk.resize(1 << level);
+    this->SSt_chunk.resize(1 << (level + 1));//留下充足的余量
 }
 
 Level::~Level()

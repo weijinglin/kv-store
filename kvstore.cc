@@ -65,53 +65,8 @@ void KVStore::put(uint64_t key, const string &s)
 		this->Memtable.getMinEle(),this->Bloom,put_offset);
 		//push the cache to the cache vector
 		
-		//进行SSTable缓存方式的判定
-		if(level == 0){
-			Level *in_level = new Level(0);
-			this->all_level.push_back(in_level);
-			in_level->put_SSTable(myCache);
-			w_file(myCache,0,0);
-			level++;
-		}
-		else{
-			if(this->all_level.at(0)->getCount() == 1){
-				this->all_level.at(0)->put_SSTable(myCache);
-				w_file(myCache,1,0);
-			}
-			else{
-				//do Compaction
-				//首先先看看对应的数据的目录在不在，不在的话要创建对应的level目录
-
-				//先得到相关区间
-				uint64_t ckey_min = this->all_level.at(0)->find_cache(0)->getkey_min() >
-				this->all_level.at(0)->find_cache(1)->getkey_min() ? 
-				 this->all_level.at(0)->find_cache(0)->getkey_min() :
-				this->all_level.at(0)->find_cache(1)->getkey_min();
-				uint64_t ckey_max = this->all_level.at(0)->find_cache(0)->getkey_max() >
-				this->all_level.at(0)->find_cache(1)->getkey_max() ? 
-				 this->all_level.at(0)->find_cache(0)->getkey_max() :
-				this->all_level.at(0)->find_cache(1)->getkey_max();
-
-				ckey_max = ckey_max >= myCache->getkey_max() ? ckey_max : myCache->getkey_max();
-				ckey_min = ckey_min <= myCache->getkey_min() ? ckey_min : myCache->getkey_min();
-
-				//在level-1中进行寻找关联文件
-				if(level == 1){
-					//level 还没有数据的情况
-					Level* in_level = new Level(1);
-					this->all_level.push_back(in_level);
-					level++;
-					//先生成对应的目录
-					string dir = this->getDir();
-					string sstable = dir + "/level-1";
-					int result = utils::mkdir(sstable.c_str());
-
-					//此处生成文件的策略采用运动SSTable的下表index来标识
-
-				}
-			}
-		}
-
+		//write to file
+		w_file(myCache);
 
 		//clean the MemTable
 		this->Memtable.cleanMem();
@@ -150,7 +105,64 @@ void KVStore::put(uint64_t key, const string &s)
 
 void KVStore::do_Compac(SSTablecache *myCache)
 {
-	
+	//进行SSTable缓存方式的判定
+		if(level == 0){
+			Level *in_level = new Level(0);
+			this->all_level.push_back(in_level);
+			myCache->setlevel(0);
+			myCache->setindex(0);
+			in_level->put_SSTable(myCache);
+			w_file(myCache,0,0);
+			level++;
+			return;
+		}
+		else{
+			if(this->all_level.at(0)->getCount() == 1){
+				myCache->setlevel(0);
+				myCache->setindex(1);
+				this->all_level.at(0)->put_SSTable(myCache);
+				w_file(myCache,1,0);
+				return;
+			}
+			else{
+				//do Compaction
+				//首先先看看对应的数据的目录在不在，不在的话要创建对应的level目录
+
+				//先得到相关区间
+				uint64_t ckey_min = this->all_level.at(0)->find_cache(0)->getkey_min() >
+				this->all_level.at(0)->find_cache(1)->getkey_min() ? 
+				 this->all_level.at(0)->find_cache(0)->getkey_min() :
+				this->all_level.at(0)->find_cache(1)->getkey_min();
+				uint64_t ckey_max = this->all_level.at(0)->find_cache(0)->getkey_max() >
+				this->all_level.at(0)->find_cache(1)->getkey_max() ? 
+				 this->all_level.at(0)->find_cache(0)->getkey_max() :
+				this->all_level.at(0)->find_cache(1)->getkey_max();
+
+				ckey_max = ckey_max >= myCache->getkey_max() ? ckey_max : myCache->getkey_max();
+				ckey_min = ckey_min <= myCache->getkey_min() ? ckey_min : myCache->getkey_min();
+
+				//在level-1中进行寻找关联文件
+				if(level == 1){
+					//level 还没有数据的情况
+					Level* in_level = new Level(1);
+					this->all_level.push_back(in_level);
+					level++;
+					//先生成对应的目录
+					string dir = this->getDir();
+					string sstable = dir + "/level-1";
+					int result = utils::mkdir(sstable.c_str());
+
+					//初始化归并排序的列表
+					vector<SSTablecache *> sort_list;
+					sort_list.push_back(this->all_level.at(0)->find_cache(0));
+					sort_list.push_back(this->all_level.at(0)->find_cache(1));
+					sort_list.push_back(myCache);
+
+					//此处生成文件的策略采用运动SSTable的下表index来标识
+
+				}
+			}
+		}
 }
 
 void KVStore::w_file(SSTablecache* myCache.int index,int level)
@@ -217,6 +229,16 @@ void KVStore::resetBloom()
 	for(int i = 0;i < 10240;++i){
 		Bloom[i] = 0;
 	}
+}
+
+kv_box* KVStore::MergeSort(vector<SSTablecache *> &sort_list)
+{
+	length = 0;
+	int count = sort_list.size();
+	//采用多路归并的算法
+
+	
+
 }
 
 

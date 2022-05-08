@@ -11,6 +11,8 @@ SSTablecache::SSTablecache(/* args */)
     this->key_count = 0;
     this->key_max = 0;
     this->key_min = 0;
+    this->index = 0;
+    this->level = 0;
 }
 
 SSTablecache::SSTablecache(const SSTablecache& a)
@@ -29,6 +31,8 @@ SSTablecache::SSTablecache(const SSTablecache& a)
         this->key_array[i] = a.key_array[i];
         this->offset_array[i] = a.offset_array[i];
     }
+    this->index = a.index;
+    this->level = a.level;
 }
 
 SSTablecache::SSTablecache(unsigned long long time,unsigned long long count,unsigned long long min,
@@ -51,6 +55,8 @@ unsigned long long max,SKNode* p,bool *filter,int offset):timeStamp(time),key_co
         index++;
     }
     this->length = offset;
+    this->index = 0;
+    this->level = 0;
     delete NIL;
 }
 
@@ -128,4 +134,43 @@ unsigned long long SSTablecache::getkey_max()
 unsigned long long SSTablecache::getkey_Count()
 {
     return this->key_count;
+}
+
+int SSTablecache::getindex()
+{
+    return this->index;
+}
+
+int SSTablecache::getlevel()
+{
+    return this.level;
+}
+
+void SSTablecache::setindex(int index)
+{
+    this.index = index;
+}
+
+void SSTablecache::setlevel(int level)
+{
+    this->level = level;
+}
+
+
+kv_box* SSTablecache::to_kv_box()
+{
+    kv_box* val = new kv_box(this->key_count);
+    for(int i = 0;i < key_count;++i){
+        val[i].index = this->index;
+        val[i].level = this->level;
+        val[i].key = this->key_array.at(i);
+        val[i].offset = this->key_array.at(i);
+        if(i != key_count - 1){
+            val[i].length = this->offset_array.at(i+1) - this->offset_array.at(i);
+        }
+        else{
+            val[i].length = this->length - this->offset_array.at(i);
+        }
+    }
+    return val;
 }

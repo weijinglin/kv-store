@@ -6,6 +6,7 @@
 #include "level.h"
 #include <vector>
 
+
 class KVStore : public KVStoreAPI {
 	// You can add your implementation here
 private:
@@ -40,4 +41,6 @@ public:
 	void w_file(SSTablecache* myCache.int index,int level);//简单的用于正常的文件写入
 
 	void do_Compac(SSTablecache *myCache);
+
+	kv_box* MergeSort(vector<SSTablecache *> &sort_list)//这个归并排序返回一个kv_box数组，然后可以根据这数组进行数据的导入
 };
