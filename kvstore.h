@@ -38,9 +38,12 @@ public:
 
 	std::string getDir();//获取根目录
 
-	void w_file(SSTablecache* myCache.int index,int level);//简单的用于正常的文件写入
+	void w_file(SSTablecache* myCache);//简单的用于正常的文件写入
 
 	void do_Compac();
 
 	void Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s,vector<SkipList*> &mem);
+
+	//给定一个kv_box数组和数组的长度，从文件中读取特定的值存在mem中并放在vector中
+	void fill_mem(kv_box* gen,uint64_t count,vector<SkipList *> &mem);
 };

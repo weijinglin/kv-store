@@ -71,7 +71,7 @@ void KVStore::put(uint64_t key, const string &s)
 		int file_count = this->all_level.at(0)->getCount();
 		myCache->setindex(file_count);
 		myCache->setlevel(0);
-		w_file(myCache,file_count,0);
+		w_file(myCache);
 
 		//now check for the compaction
 		do_Compac();
@@ -191,7 +191,7 @@ void KVStore::do_Compac()
 
 		//进行level-0的简单的Merge,由于块内有序，可以把level-n(n > 0)当作块内有序
 		if(this_level.size() > 0){
-			Merge_l_zero(la_box,this_level,tiny_caches);
+			Merge_l_zero(la_box,this_level,tiny_cache);
 		}
 
 		//后处理level >= 1的情况 
@@ -212,6 +212,9 @@ void KVStore::Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s,vector<SkipL
 	uint64_t ss_index = 0;//指向SSTable的下标
 	uint64_t num = 0;//统计现在在哪个SSTable
 	uint64_t bytes = 10240 + 32;//统计现在的byte数目
+	uint64_t by_bef;//bytes的预检测变量
+
+	bool end_flag = false;
 
 	while (true)
 	{
@@ -221,7 +224,17 @@ void KVStore::Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s,vector<SkipL
 			if(ca_count > 0){
 				if(seq_kv[seq_index].data.key == a_cache[ca_count-1].data.key){
 					if(seq_kv[seq_index].timestamp > a_cache[ca_count-1].timestamp){
-						bytes = bytes - a_cache[ca_count-1].data.length + seq_kv[seq_index].data.length;
+						by_bef = bytes - a_cache[ca_count-1].data.length + seq_kv[seq_index].data.length;
+						if(by_bef > 2 * 1024 * 1024){
+							//长度超标了
+							//需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
+							//			   2，把a_cache恢复到初始状态
+							//			   3，调整ca_count
+							bytes = bytes - a_cache[ca_count-1].data.length;
+							a_cache[ca_count-1].index = -1;
+							ca_count-=1;
+							fill_mem(a_cache,ca_count,mem);
+						}
 						a_cache[ca_count-1] = seq_kv[seq_index];
 
 						seq_index++;
@@ -345,10 +358,37 @@ void KVStore::Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s,vector<SkipL
 				seq_index++;
 			}
 		}
-	}
 	
+		//要进行边界的检测
+		if(ss_index == s.at(num)->getkey_Count()){
+			num++;
+			ss_index = 0;
+			if(num >= s.size()){
+				end_flag = true;
+				break;
+			}
+		}
+		if(seq_kv[seq_index].index == -1){
+			break;
+		}
+	}	
+}
 
+void KVStore::fill_mem(kv_box* gen,uint64_t count,vector<SkipList *> &mem)
+{
+	//用于定位文件中的字串
+	int in_offset;
+	uint64_t in_key;
+	int in_length;
 	
+	//用于定位对应文件的位置
+	int in_timestamp;
+	int in_index;
+	int in_level;
+	for(int i = 0;i < count;++i){
+		string dir = this->getDir();
+		string fileroad = fname_gen()
+	}
 }
 
 //先使用稳定的冒泡排序，后面可以再优化
@@ -402,19 +442,24 @@ uint64_t get_maxkey(vector<SSTablecache*> &s)
 	return max;
 }
 
-void KVStore::w_file(SSTablecache* myCache.int index,int level)
+//定义文件名的映射关系
+string fname_gen(int level,int timestamp,int index){
+	string file_level = std::to_string(level);
+	string file_road = "/level-" + file_level;
+	string fileroad = file_road + "/data";
+	string timenum = std::to_string(timestamp);
+	timenum = timenum + "-";
+	timenum = timenum + std::to_string(index);
+	fileroad = fileroad + timenum + ".sst";
+	return fileroad;
+}
+
+void KVStore::w_file(SSTablecache* myCache)
 {
 		//文件大小超标，开始向有硬盘写入数据
 		string dir = this->getDir();
 
-		//准备文件信息
-		string file_level = std::to_string(level);
-		string file_road = "/level-" + file_level;
-		string fileroad = file_road + "/data";
-		string timenum = std::to_string(index);
-		//cout << timenum << endl;
-		fileroad = fileroad + timenum;
-		fileroad = fileroad + ".sst";
+		string fileroad = fname_gen(myCache);
 
 		string file_path = dir + fileroad;
 		ofstream data_file(file_path,ios::out | ios::binary);
