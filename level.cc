@@ -24,6 +24,8 @@ void Level::put_SSTable(SSTablecache *table)
 {
     this->SSt_chunk.push_back(table);
     count++;
+    table->setindex(Num);
+    Num++;
 }
 
 int Level::getLevel()

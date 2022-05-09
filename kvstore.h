@@ -46,4 +46,6 @@ public:
 
 	//给定一个kv_box数组和数组的长度，从文件中读取特定的值存在mem中并放在vector中
 	void fill_mem(kv_box* gen,uint64_t count,vector<SkipList *> &mem);
+
+	void gen_sstable(vector<SkipList *> &mem);
 };

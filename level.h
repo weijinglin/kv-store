@@ -15,6 +15,9 @@ private:
     uint64_t count;//used to log the number of SSTable the level store
     int level;// used to log for the level of the level 
     vector<SSTablecache*> SSt_chunk;//used to store the SSTable in the level    
+    uint64_t Num;//used to find the corrsponding file in the level(it represent the num of file the level has ever haven)
+
+    //Num和count的区别在于一个只增不减，一个可增可减
 
 public:
     Level(int l);

@@ -78,8 +78,6 @@ void KVStore::put(uint64_t key, const string &s)
 		//deal with compaction
 		//do_Compac(myCache);
 		//这里采用先插入后优化的策略
-		int file_count = this->all_level.at(0)->getCount();
-		myCache->setindex(file_count);
 		myCache->setlevel(0);
 		w_file(myCache);
 
@@ -117,6 +115,38 @@ void KVStore::put(uint64_t key, const string &s)
 		}
 	}
 	return;
+}
+
+bool* gen_bloom(SkipList* in_mem){
+	bool* Bloom_out = new bool[10240];
+	unsigned int hash[4] = {0};
+	unsigned long long myKey;
+	SKNode* p = in_mem->getMinEle();
+	while(p->forwards[0] != NIL){
+		myKey = p->key;
+		MurmurHash3_x64_128(&myKey,sizeof(myKey), 1, hash);
+		for(int i = 0;i < 4;++i){
+			Bloom[hash[i] % 10240] = true;
+		}
+		p = p->forwards[0];
+	}
+}
+
+//输入一个SkipList的数组，初始化一个含SSTable的数组
+void KVStore::gen_sstable(vector<SkipList *> &mem,vector<SSTablecache *> &s_list){
+	uint64_t in_time = this->timeStamp;
+	uint64_t in_count;
+	int in_offset;
+	bool* in_Bloom;
+	SSTablecache* in_table;
+	for(int i = 0;i < mem.size();++i){
+		in_count = mem.at(i)->getKetcount();
+		in_Bloom = gen_bloom(mem.at(i));
+		in_offset = 32 + 10*1024 + in_count * 12;
+		in_table = new SSTablecache(in_time,in_count,mem.at(i)->getMinkey(),mem.at(i)->getMaxkey(),
+		mem.at(i)->getMinEle(),in_Bloom,in_offset);
+		s_list.push_back(in_table);
+	}
 }
 
 void KVStore::do_Compac()
@@ -203,7 +233,7 @@ void KVStore::do_Compac()
 		}
 
 		//现在已经得到要写到level-1的文件了
-
+		
 
 		//后处理level >= 1的情况 
 		while(this->all_level.at(check_level)->getCount() >= (1 << (check_level+1) + 1)){
@@ -759,6 +789,7 @@ string fname_gen(int level,int timestamp,int index){
 	return fileroad;
 }
 
+//这个w_file只能用于正常的写入
 void KVStore::w_file(SSTablecache* myCache)
 {
 		//文件大小超标，开始向有硬盘写入数据
