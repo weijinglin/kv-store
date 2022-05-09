@@ -7,6 +7,7 @@
 #include <list>
 
 #define MAX_LEVEL 16
+
 #define KEY_LENGTH 8
 #define OFFSET_LENGTH 4
 

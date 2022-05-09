@@ -205,8 +205,169 @@ void KVStore::Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s,vector<SkipL
 {
 	//进行一个两路的归并排序
 	kv_box* a_cache = new kv_box((2*1024*1024-10240-32)/12);//存储tiny_cache获取数据的所需要的信息
-	kv_box* compare = s.at(0)->to_kv_box();
+	int ca_count = 0;//统计当前的a_cache所指的位置
+	sort_vec(s);//保证vector中块间的有序
+
+	uint64_t seq_index = 0;//指向seq_kv的下标
+	uint64_t ss_index = 0;//指向SSTable的下标
+	uint64_t num = 0;//统计现在在哪个SSTable
+	uint64_t bytes = 10240 + 32;//统计现在的byte数目
+
+	while (true)
+	{
+		/* code */
+		//先进行比较
+		if(seq_kv[seq_index].data.key < s.at(num)->get_pair(ss_index).key){
+			if(ca_count > 0){
+				if(seq_kv[seq_index].data.key == a_cache[ca_count-1].data.key){
+					if(seq_kv[seq_index].timestamp > a_cache[ca_count-1].timestamp){
+						bytes = bytes - a_cache[ca_count-1].data.length + seq_kv[seq_index].data.length;
+						a_cache[ca_count-1] = seq_kv[seq_index];
+
+						seq_index++;
+					}
+				}
+				else{
+					a_cache[ca_count] = seq_kv[seq_index];
+					bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
+					ca_count++;
+
+					seq_index++;
+				}
+			}
+			else{
+				a_cache[ca_count] = seq_kv[seq_index];
+				bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
+				ca_count++;
+
+				seq_index++;
+			}
+		}
+		else if(seq_kv[seq_index].data.key > s.at(num)->get_pair(ss_index).key){
+			if(ca_count > 0){
+				if(s.at(num)->get_pair(ss_index).key == a_cache[ca_count-1].data.key){
+					if(s.at(num)->getTime() > a_cache[ca_count-1].timestamp){
+						bytes = bytes - a_cache[ca_count-1].data.length + s.at(num)->get_pair(ss_index).length;
+						a_cache[ca_count-1].data = s.at(num)->get_pair(ss_index);
+						a_cache[ca_count-1].index = s.at(num)->getindex();
+						a_cache[ca_count-1].level = s.at(num)->getlevel();
+						a_cache[ca_count-1].timestamp = s.at(num)->getTime();
+
+						ss_index++;
+					}
+				}
+				else{
+					bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + s.at(num)->get_pair(ss_index).length;
+					a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
+					a_cache[ca_count].index = s.at(num)->getindex();
+					a_cache[ca_count].level = s.at(num)->getlevel();
+					a_cache[ca_count].timestamp = s.at(num)->getTime();
+					ca_count++;
+
+					ss_index++;
+				}
+			}
+			else{
+				a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
+				a_cache[ca_count].index = s.at(num)->getindex();
+				a_cache[ca_count].level = s.at(num)->getlevel();
+				a_cache[ca_count].timestamp = s.at(num)->getTime();
+				bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
+				ca_count++;
+
+				ss_index++;
+			}
+		}
+		else{
+			//相等的情况
+			//先比较时间戳
+			if(seq_kv[seq_index].timestamp > s.at(num)->getTime()){
+				if(ca_count > 0){
+					if(seq_kv[seq_index].data.key == a_cache[ca_count-1].data.key){
+						if(seq_kv[seq_index].timestamp > a_cache[ca_count-1].timestamp){
+							bytes = bytes - a_cache[ca_count-1].data.length + seq_kv[seq_index].data.length;
+							a_cache[ca_count-1] = seq_kv[seq_index];
+
+							seq_index++;
+						}
+					}
+					else{
+						a_cache[ca_count] = seq_kv[seq_index];
+						bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
+						ca_count++;
+
+						seq_index++;
+					}
+				}	
+				else{
+					a_cache[ca_count] = seq_kv[seq_index];
+					bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
+					ca_count++;
+
+					seq_index++;
+				}
+				ss_index++;
+			}
+			else{
+				if(ca_count > 0){
+					if(s.at(num)->get_pair(ss_index).key == a_cache[ca_count-1].data.key){
+						if(s.at(num)->getTime() > a_cache[ca_count-1].timestamp){
+							bytes = bytes - a_cache[ca_count-1].data.length + s.at(num)->get_pair(ss_index).length;
+							a_cache[ca_count-1].data = s.at(num)->get_pair(ss_index);
+							a_cache[ca_count-1].index = s.at(num)->getindex();
+							a_cache[ca_count-1].level = s.at(num)->getlevel();
+							a_cache[ca_count-1].timestamp = s.at(num)->getTime();
+
+							ss_index++;
+						}
+					}
+					else{
+						bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + s.at(num)->get_pair(ss_index).length;
+						a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
+						a_cache[ca_count].index = s.at(num)->getindex();
+						a_cache[ca_count].level = s.at(num)->getlevel();
+						a_cache[ca_count].timestamp = s.at(num)->getTime();
+						ca_count++;
+
+						ss_index++;
+					}
+				}
+				else{
+					a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
+					a_cache[ca_count].index = s.at(num)->getindex();
+					a_cache[ca_count].level = s.at(num)->getlevel();
+					a_cache[ca_count].timestamp = s.at(num)->getTime();
+					bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
+					ca_count++;
+
+					ss_index++;
+				}
+				seq_index++;
+			}
+		}
+	}
 	
+
+	
+}
+
+//先使用稳定的冒泡排序，后面可以再优化
+void sort_vec(vector<SSTablecache *> &s){
+	SSTablecache* compare;
+	bool flag = true;
+	for(int i = 0;i < s.size() && flag;++i){
+		flag = false;
+		for(int j = 0;j < s.size()-i - 1;++j){
+			if(s.at(j)->getkey_min() > s.at(j+1)->getkey_min()){
+				compare = s.at(j);
+				s.at(j) = s.at(j+1);
+				s.at(j+1) = compare;
+				flag = true;
+			}		
+		}
+	}
+	return;
+
 }
 
 bool isCover(uint64_t k_min,uint64_t k_max,uint64_t ck_min,uint64_t ck_max){

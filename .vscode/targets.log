@@ -7,7 +7,7 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 # There is NO WARRANTY, to the extent permitted by law.
  
 
-# Make data base, printed on Sun May 08 10:14:09 2022
+# Make data base, printed on Mon May 09 15:40:56 2022
 
 # Variables
 
@@ -32,14 +32,14 @@ HOMEDRIVE = C:
 # automatic
 ^D = $(patsubst %/,%,$(patsubst %\,%,$(dir $^)))
 # makefile
-CURDIR := d:/programforVS/LSM/lsm-kv
+CUR 
+DIR := d:/programforVS/LSM/lsm-kv
 # default
 SHELL := sh.exe
 # environment
 WINDIR = C:\Windows
 # environment
-VSCODE_NLS_CONFIG = {"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"a78078f10f99ab7adc9063c14c25e7ae.zh-cn","_translationsConfigFile":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\a78078f10f99ab7adc9063c14c25e7ae.zh-cn\\tcf.json","_cacheRoot":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\a78078f10f99ab7adc9063c14c25e7ae.zh-cn","_resolvedLanguagePackCoreLocation":"C:\\Users\ 
-\86131\\AppData\\Roaming\\Code\\clp\\a78078f10f99ab7adc9063c14c25e7ae.zh-cn\\57fd6d0195bb9b9d1b49f6da5db789060795de47","_corruptedFile":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\a78078f10f99ab7adc9063c14c25e7ae.zh-cn\\corrupted.info","_languagePackSupport":true}
+VSCODE_NLS_CONFIG = {"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"a78078f10f99ab7adc9063c14c25e7ae.zh-cn","_translationsConfigFile":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\a78078f10f99ab7adc9063c14c25e7ae.zh-cn\\tcf.json","_cacheRoot":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\a78078f10f99ab7adc9063c14c25e7ae.zh-cn","_resolvedLanguagePackCoreLocation":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\a78078f10f99ab7adc9063c14c25e7ae.zh-cn\\57fd6d0195bb9b9d1b49f6da5db789060795de47","_corruptedFile":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\a78078f10f99ab7adc9063c14c25e7ae.zh-cn\\corrupted.info","_languagePackSupport":true}
 # environment
 ONEDRIVE = C:\Users\86131\OneDrive
 # makefile (from 'Makefile', line 2)
@@ -63,7 +63,7 @@ PROGRAMW6432 = C:\Program Files
 # environment
 PROGRAMDATA = C:\ProgramData
 # environment
-VSCODE_IPC_HOOK_EXTHOST = \\.\pipe\vscode-ipc-fcb938ad-144b-4005-a43e-c680039fd01e-sock
+VSCODE_IPC_HOOK_EXTHOST = \\.\pipe\vscode-ipc-67fcceaf-885c-46ad-a087-ea156b333c74-sock
 # environment
 VSCODE_CWD = D:\programforVS\LSM\lsm-kv
 # environment
@@ -97,7 +97,7 @@ INTELLIJ IDEA = D:\JetBrains\IntelliJ IDEA 2021.3.2\bin;
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_27604_QDLDXHTKNOXJVLOY
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_29580_LKJRPPHUPXIODEEB
 # environment
 VSCODE_PIPE_LOGGING = true
 # environment
@@ -160,8 +160,7 @@ PROCESSOR_ARCHITEW6432 = AMD64
 PROCESSOR_IDENTIFIER = Intel64 Family 6 Model 141 Stepping 1, GenuineIntel
 # environment
 OS = Windows_NT
-# 
- environment
+# environment
 VSCODE_IPC_HOOK = \\.\pipe\2b3c799df7ae66e8bdb4dcd95133feca-1.67.0-main-sock
 # environment
 HOMEPATH = \Users\86131
@@ -181,7 +180,8 @@ SYSTEMROOT = C:\Windows
 +F = $(notdir $+)
 # environment
 APPDATA = C:\Users\86131\AppData\Roaming
-# environment
+# envi 
+ronment
 TEMP = C:\Users\86131\AppData\Local\Temp
 # environment
 COMSPEC = C:\Windows\system32\cmd.exe
@@ -212,7 +212,7 @@ PROCESSOR_LEVEL = 6
 # environment
 FPS_BROWSER_APP_PROFILE_STRING = Internet Explorer
 # environment
-VSCODE_PID = 27604
+VSCODE_PID = 29580
 # environment
 USERDOMAIN_ROAMINGPROFILE = LAPTOP-JVDN2KSE
 # variable set hash-table stats:
@@ -235,8 +235,7 @@ USERDOMAIN_ROAMINGPROFILE = LAPTOP-JVDN2KSE
 # C:\Users\86131\AppData\Local\Microsoft\WindowsApps (key C:/Users/86131/AppData/Local/Microsoft/WindowsApps, mtime 1651121024): 26 files, no impossibilities.
 # C:\Windows\System32\WindowsPowerShell\v1.0\ (key C:/Windows/System32/WindowsPowerShell/v1.0/, mtime 1622915612): 31 files, no impossibilities.
 # . (key d:/programforVS/LSM/lsm-kv, mtime 1651915191): 32 files, no impossibilities.
-# D:\Git\Git\cmd (key D:/Git/Git/cmd,  
-mtime 1645000596): 8 files, no impossibilities.
+# D:\Git\Git\cmd (key D:/Git/Git/cmd, mtime 1645000596): 8 files, no impossibilities.
 # C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\ (key C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/, mtime 1642870108): 7 files, no impossibilities.
 # C:\Program Files (x86)\Common Files\Oracle\Java\javapath (key C:/Program Files (x86)/Common Files/Oracle/Java/javapath, mtime 1644842900): 5 files, no impossibilities.
 # D:\VScode\Microsoft VS Code\Microsoft VS Code\bin (key D:/VScode/Microsoft VS Code/Microsoft VS Code/bin, mtime 1651856269): 4 files, no impossibilities.
@@ -373,6 +372,6 @@ SSTable.o:
 # strcache performance: lookups = 3776 / hit rate = 3%
 # hash-table stats:
 # Load=3641/8192=44%, Rehash=0, Collisions=1393/3776=37%
-# Finished Make data base on Sun May 08 10:14:09 2022
+# Finished Make data base on Mon May 09 15:40:56 2022
 
  
