@@ -8,6 +8,16 @@
 
 using namespace std;
 
+uint64_t get_minkey(vector<SSTablecache*> &s);
+
+uint64_t get_maxkey(vector<SSTablecache*> &s);
+
+bool isCover(uint64_t k_min,uint64_t k_max,uint64_t ck_min,uint64_t ck_max);
+
+void sort_vec(vector<SSTablecache *> &s);
+
+string fname_gen(int level,int timestamp,int index);
+
 KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
 {
 	//初始发现对应的数据目录下面没有数据文件时的处理方式
@@ -95,8 +105,6 @@ void KVStore::put(uint64_t key, const string &s)
 		for(int i = 0;i < 4;++i){
 			Bloom[hash[i] % 10240] = true;
 		}
-
-		data_file.close();
 	}
 	else{
 		this->Memtable.Insert(key,s);
@@ -135,7 +143,7 @@ void KVStore::do_Compac()
 
 		//正式开始处理
 		vector<SkipList *> tiny_cache;//用于缓存将要写入level-1的内容
-		kv_box* a_cache = new kv_box((2*1024*1024-10240-32)/12);//存储tiny_cache获取数据的所需要的信息
+		kv_box* a_cache = new kv_box[(2*1024*1024-10240-32)/12];//存储tiny_cache获取数据的所需要的信息
 	
 		//定义对应的指针并且进行初始化
 		uint64_t counter = 0;
@@ -147,7 +155,7 @@ void KVStore::do_Compac()
 			counter += this->all_level.at(0)->find_cache(i)->getkey_Count();
 		}
 
-		kv_box *la_box = new kv_box(counter);
+		kv_box *la_box = new kv_box[counter];
 		uint64_t count = 0;
 		//先对level-0进行归并排序
 		while(true){
@@ -194,6 +202,9 @@ void KVStore::do_Compac()
 			Merge_l_zero(la_box,this_level,tiny_cache);
 		}
 
+		//现在已经得到要写到level-1的文件了
+
+
 		//后处理level >= 1的情况 
 		while(this->all_level.at(check_level)->getCount() >= (1 << (check_level+1) + 1)){
 
@@ -204,7 +215,7 @@ void KVStore::do_Compac()
 void KVStore::Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s,vector<SkipList*> &mem)
 {
 	//进行一个两路的归并排序
-	kv_box* a_cache = new kv_box((2*1024*1024-10240-32)/12);//存储tiny_cache获取数据的所需要的信息
+	kv_box* a_cache = new kv_box[(2*1024*1024-10240-32)/12];//存储tiny_cache获取数据的所需要的信息
 	int ca_count = 0;//统计当前的a_cache所指的位置
 	sort_vec(s);//保证vector中块间的有序
 
@@ -531,7 +542,7 @@ void KVStore::Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s,vector<SkipL
 			}
 			else{
 				by_bef = bytes + seq_kv[seq_index].data.length + KEY_LENGTH + OFFSET_LENGTH;
-				if(by_bef > 2 (* 1024 * 1024)){
+				if(by_bef > (2 * 1024 * 1024)){
 					//长度超标了
 					//需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
 					//			   2，把a_cache恢复到初始状态
@@ -798,6 +809,7 @@ void KVStore::w_file(SSTablecache* myCache)
 			q = q->forwards[0];
 		}
 
+		data_file.close();
 }
 
 void KVStore::resetBloom()
@@ -814,46 +826,46 @@ void KVStore::resetBloom()
  */
 std::string KVStore::get(uint64_t key)
 {
-	string val = this->Memtable.Search(key);
-	if(val != ""){
-		return val;
-	}
-	else{
-		//from end to begin,because that can find the most updated data
-		//cout << "distance : " << acache.end() - acache.begin() <<endl;
-		for(vector<SSTablecache*>::iterator iter=acache.end()-1;iter != acache.begin()-1;iter--){
-			int mes[2] ={0};
-			//used for debug
-			//cout << "timestamp  : " <<  iter->getTime() << endl;
+	// string val = this->Memtable.Search(key);
+	// if(val != ""){
+	// 	return val;
+	// }
+	// else{
+	// 	//from end to begin,because that can find the most updated data
+	// 	//cout << "distance : " << acache.end() - acache.begin() <<endl;
+	// 	for(vector<SSTablecache*>::iterator iter=acache.end()-1;iter != acache.begin()-1;iter--){
+	// 		int mes[2] ={0};
+	// 		//used for debug
+	// 		//cout << "timestamp  : " <<  iter->getTime() << endl;
 
-        	if((*iter)->Search(key,mes)){
-				// cout << "find : " << find_count << endl;
-				int num = iter - acache.begin();//算出是第几个文件
-				string dir = this->getDir();
-				string fileroad = fname_gen((*iter)->getlevel(),(*iter)->getTime(),(*iter)->getindex());
-				string file_path = dir + fileroad;
-				int offset = mes[0];
-				unsigned long long length = mes[1];
-				ifstream read_file(file_path,ios::in|ios::binary);
-				read_file.seekg(offset,ios::beg);
-				if(read_file.eof()){
-					cout << "wrong!" << endl;
-				}
-				char *buffer = new char[length + 1];
-				read_file.read(buffer,length);
-				buffer[length] = '\0';
-				string ans = buffer;
-				delete buffer;
-				if(ans == "~DELETED~"){
-					return "";
-				}
-				else{
-					return ans;
-				}
-			}
-    	}
-		return "";
-	}
+    //     	if((*iter)->Search(key,mes)){
+	// 			// cout << "find : " << find_count << endl;
+	// 			int num = iter - acache.begin();//算出是第几个文件
+	// 			string dir = this->getDir();
+	// 			string fileroad = fname_gen((*iter)->getlevel(),(*iter)->getTime(),(*iter)->getindex());
+	// 			string file_path = dir + fileroad;
+	// 			int offset = mes[0];
+	// 			unsigned long long length = mes[1];
+	// 			ifstream read_file(file_path,ios::in|ios::binary);
+	// 			read_file.seekg(offset,ios::beg);
+	// 			if(read_file.eof()){
+	// 				cout << "wrong!" << endl;
+	// 			}
+	// 			char *buffer = new char[length + 1];
+	// 			read_file.read(buffer,length);
+	// 			buffer[length] = '\0';
+	// 			string ans = buffer;
+	// 			delete buffer;
+	// 			if(ans == "~DELETED~"){
+	// 				return "";
+	// 			}
+	// 			else{
+	// 				return ans;
+	// 			}
+	// 		}
+    // 	}
+	// 	return "";
+	// }
 }
 /**
  * Delete the given key-value pair if it exists.

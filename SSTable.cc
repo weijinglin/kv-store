@@ -43,7 +43,8 @@ unsigned long long max,SKNode* p,bool *filter,int offset):timeStamp(time),key_co
     this->kv_array.resize(key_count);
     int index = 0;
     while(p->val != ""){
-        kv_pair gen_kv(p->key,offset,p->val.length);
+        kv_pair gen_kv(p->key,offset);
+        gen_kv.length = p->val.length();
         this->kv_array.push_back(gen_kv);
         offset += p->val.length();
         p = p->forwards[0];
@@ -156,12 +157,12 @@ int SSTablecache::getindex()
 
 int SSTablecache::getlevel()
 {
-    return this.level;
+    return this->level;
 }
 
 void SSTablecache::setindex(int index)
 {
-    this.index = index;
+    this->index = index;
 }
 
 void SSTablecache::setlevel(int level)
@@ -172,7 +173,7 @@ void SSTablecache::setlevel(int level)
 
 kv_box* SSTablecache::to_kv_box()
 {
-    kv_box* val = new kv_box(this->key_count);
+    kv_box* val = new kv_box[this->key_count];
     for(int i = 0;i < key_count;++i){
         val[i].index = this->index;
         val[i].level = this->level;

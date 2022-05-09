@@ -47,7 +47,7 @@ struct kv_box
 	kv_box(){
 		index = -1;
 		level = -1;
-        timestamp = -1
+        timestamp = -1;
 	}
 	kv_box(uint64_t k,int o,int len,int in,int le,int time):index(in),level(le),timestamp(time){
         data.key = k;
