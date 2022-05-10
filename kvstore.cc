@@ -319,11 +319,19 @@ void KVStore::do_Compac()
 	}
 }
 
+//给定SSTable列表，删除对应的文件
+
 void KVStore::del_file(vector<SSTablecache*> &s)
 {
 	string dir = this->getDir();
-	string fileroad;
+	string file_path;
+	for(int i = 0;i < s.size();++i){
+		file_path = dir + fname_gen(s.at(i)->getlevel(),s.at(i)->getTime(),s.at(i)->getindex());
 
+		if(utils::rmfile(file_path) != 0){
+			cout << "rmfile wrong" << endl;
+		}
+	}
 }
 
 kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2)
