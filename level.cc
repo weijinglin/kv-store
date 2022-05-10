@@ -34,6 +34,7 @@ void Level::put_SSTable(SSTablecache *table)
 {
     this->SSt_chunk.push_back(table);
     count++;
+    table->setlevel(this->level);
     table->setindex(Num);
     Num++;
 }
@@ -62,12 +63,28 @@ void Level::de_table(uint64_t k_min,uint64_t k_max)
         }
     }
 
+    uint64_t find_num = 1;
     //进行位置上的调整
     for(uint64_t i = 0;i < this->count;++i){
         if(SSt_chunk.at(i) == nullptr){
-            for(int j = i;j < this->count - 1;++j){
+            for(int j = i;j < this->count - find_num;++j){
                 SSt_chunk[j] = SSt_chunk.at(j+1);
             }
+            find_num++;
+        }
+        if(find_num == del_num){
+            break;
         }
     }
+    count -= del_num;
+}
+
+void Level::del_all()
+{
+    for(int i = 0;i < this->count;++i){
+        SSTablecache *p = SSt_chunk.at(i);
+        delete p;
+        SSt_chunk.at(i) = nullptr;
+    }
+    count = 0;
 }

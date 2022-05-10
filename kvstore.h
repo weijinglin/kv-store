@@ -47,13 +47,19 @@ public:
 	//给定一个kv_box数组和数组的长度，从文件中读取特定的值存在mem中并放在vector中
 	void fill_mem(kv_box* gen,uint64_t count,vector<SkipList *> &mem);
 
-	void gen_sstable(vector<SkipList *> &mem);
+	void gen_sstable(vector<SkipList *> &mem,vector<SSTablecache *> &s_list);
 	
 	void read_kv(vector<SSTablecache*> &mem,vector<kv *> &m);
 
-	kv* read_sorted_kv(vector<SSTablecache*> &mem,vector<kv *> &m);
+	kv* read_sorted_kv(vector<SSTablecache*> &mem);
 
 	kv* merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2);
 
 	void del_file(vector<SSTablecache*> &s);
+
+	void gen_table_kv(kv* mem,uint64_t len,vector<SSTablecache*> &s_list,vector<SkipList*> &skip);
+
+    kv* merge_self(kv* mem,uint64_t len);
+
+	void w_file_plus(SSTablecache* myCache,SkipList * mem);
 };

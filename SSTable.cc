@@ -188,3 +188,8 @@ kv_pair SSTablecache::get_pair(uint64_t index)
 {
     return this->kv_array.at(index);
 }
+
+bool* SSTablecache::get_bloom()
+{
+    return this->Bloom;
+}

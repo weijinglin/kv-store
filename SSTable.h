@@ -34,7 +34,7 @@ struct kv{
     uint64_t key;
     int timestamp;
     string value;
-}
+};
 
 struct kv_box
 {
@@ -100,6 +100,8 @@ public:
     unsigned long long getTime();
 
     unsigned long long getkey_Count();
+
+    bool* get_bloom();
 
     int getindex();
 
