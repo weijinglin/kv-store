@@ -35,4 +35,8 @@ public:
     void de_table(uint64_t k_min,uint64_t k_max);//删除和这个范围有交集的SSTable
 
     void del_all();
+
+    uint64_t get_min_time();
+
+    void get_table_time(vector<SSTablecache*> &s,int count);//根据给定的数目初始化对应的vector(选择timestamp和key小的）
 };

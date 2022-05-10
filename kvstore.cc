@@ -303,9 +303,7 @@ void KVStore::do_Compac()
                 exit(0);
             }
         }
-        else{
 
-        }
         for(unsigned int i = 0;i < this->all_level.at(1)->getCount();++i){
 			if(isCover(k_min,k_max,this->all_level.at(1)->find_cache(i)->getkey_min(),this->all_level.at(1)->find_cache(i)->getkey_max())){
 				this_level.push_back(this->all_level.at(1)->find_cache(i));
@@ -355,6 +353,13 @@ void KVStore::do_Compac()
 				break;
 			}
 		}
+
+        //进行vector中的内存的释放
+        for(unsigned int i = 0;i < zero_kv.size();++i){
+            delete [] zero_kv.at(i);
+        }
+
+        zero_kv.clear();
 
 		kv* one_kv;
 
@@ -410,7 +415,100 @@ void KVStore::do_Compac()
 
 		//后处理level >= 1的情况 
         while(this->all_level.at(check_level)->getCount() >= ((1 << (check_level+1)) + 1)){
+            //对于更高层的Compaction的处理
+            //第一步，选择对应的SSTable
+            //确定合并所需要的SSTable的数目
+            int com_num = this->all_level.at((check_level))->getCount() - (1 << (check_level+1));
+            last_level.clear();
+            this_level.clear();
 
+            this->all_level.at(check_level)->get_table_time(last_level,com_num);
+
+            k_min = get_minkey(last_level);
+            k_max = get_maxkey(last_level);
+
+            //先进行判断，并创建目录
+            if(level == check_level+1){
+                Level* new_level = new Level(check_level+1);
+                this->all_level.push_back(new_level);
+                level++;
+                //创建对应的文件
+
+                string dir = this->getDir();
+                string fileroad = dir + "/level-" + std::to_string(check_level+1);
+                int result = utils::mkdir(fileroad.c_str());
+                if(result){
+                    exit(0);
+                }
+            }
+            //初始化this_level
+            for(unsigned int i = 0;i < this->all_level.at(check_level+1)->getCount();++i){
+                if(isCover(k_min,k_max,this->all_level.at(check_level+1)->find_cache(i)->getkey_min(),this->all_level.at(check_level+1)->find_cache(i)->getkey_max())){
+                    this_level.push_back(this->all_level.at(check_level+1)->find_cache(i));
+                }
+            }
+
+            kv* sorted_kv;
+            kv* this_kv;
+            kv* next_kv;
+            int len_this = 0;
+            int len_next = 0;
+            int length;
+
+            sort_vec(last_level);
+
+            this_kv = read_sorted_kv(last_level);
+
+            //计算this_kv的长度
+            for(unsigned int i = 0;i < last_level.size();++i){
+                len_this += last_level.at(i)->getkey_Count();
+            }
+
+            if(this_level.size() > 0){
+                sort_vec(this_level);
+
+                next_kv = read_sorted_kv(this_level);
+
+                //计算this_kv的长度
+                for(unsigned int i = 0;i < this_level.size();++i){
+                    len_next += this_level.at(i)->getkey_Count();
+                }
+
+                sorted_kv = merger_sort(this_kv,next_kv,len_this,len_next);
+                length = len_this + len_next;
+
+            }
+            else{
+                sorted_kv = merge_self(this_kv,len_this);
+                length = len_this;
+            }
+
+            //现在已经得到要写到level-1的文件了
+            //先删除对应的文件
+            del_file(last_level);
+            del_file(this_level);
+            //删除对应的SSTable缓存
+            this->all_level.at(check_level+1)->de_table(k_min,k_max);
+            this->all_level.at(check_level)->de_table(k_min,k_max);
+
+            //通过kv* 获得对应的SSTable，并push到对应的level
+            vector<SSTablecache*> in_table;
+            vector<SkipList*> in_mem;
+            gen_table_kv(sorted_kv,length,in_table,in_mem);
+
+
+            //进行文件的写入
+            //先写入SSTable
+            for(unsigned int i = 0;i < in_table.size();++i){
+                this->all_level.at(check_level+1)->put_SSTable(in_table.at(i));
+            }
+
+            //进行文件的写入
+            for(unsigned int i = 0;i < in_table.size();++i){
+                w_file_plus(in_table.at(i),in_mem.at(i));
+            }
+
+            check_level++;
 		}
 	}
 }
@@ -1179,8 +1277,8 @@ uint64_t get_maxkey(vector<SSTablecache*> &s)
 {
     uint64_t max = 0;
     for(unsigned int i = 0;i < s.size();++i){
-		if(max < s.at(i)->getkey_min()){
-			max = s.at(i)->getkey_min();
+        if(max < s.at(i)->getkey_max()){
+            max = s.at(i)->getkey_max();
 		}
 	}
 	return max;
