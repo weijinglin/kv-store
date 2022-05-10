@@ -48,4 +48,12 @@ public:
 	void fill_mem(kv_box* gen,uint64_t count,vector<SkipList *> &mem);
 
 	void gen_sstable(vector<SkipList *> &mem);
+	
+	void read_kv(vector<SSTablecache*> &mem,vector<kv *> &m);
+
+	kv* read_sorted_kv(vector<SSTablecache*> &mem,vector<kv *> &m);
+
+	kv* merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2);
+
+	void del_file(vector<SSTablecache*> &s);
 };

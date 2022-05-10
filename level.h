@@ -32,5 +32,5 @@ public:
 
     uint64_t getCount();
 
-    void de_table(uint64_t index);
+    void de_table(uint64_t k_min,uint64_t k_max);//删除和这个范围有交集的SSTable
 };

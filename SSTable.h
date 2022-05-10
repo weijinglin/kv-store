@@ -30,6 +30,12 @@ struct kv_pair
 };
 
 
+struct kv{
+    uint64_t key;
+    int timestamp;
+    string value;
+}
+
 struct kv_box
 {
 	/* data */

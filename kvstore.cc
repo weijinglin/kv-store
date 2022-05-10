@@ -149,6 +149,73 @@ void KVStore::gen_sstable(vector<SkipList *> &mem,vector<SSTablecache *> &s_list
 	}
 }
 
+//由SSTable产生对应的kv的vector
+void KVStore::read_kv(vector<SSTablecache*> &mem,vector<kv *> &m){
+	string dir = this->getDir();
+	string file_path;
+	int length;
+	int offset;
+	char *buf;
+	kv* in_kv;
+	ifstream read_file;
+	for(int i = 0;i < mem.size();++i){
+		file_path = dir + fname_gen(mem.at(i)->getlevel(),mem.at(i)->getTime(),mem.at(i)->getindex());
+		read_file.open(file_path,ios::binary);
+
+		in_kv = new kv[mem.at(i)->getkey_Count()];
+		for(int j = 0;j < mem.at(i)->getkey_Count();++j){
+			length = mem.at(i)->get_pair(j).length;
+			offset = mem.at(i)->get_pair(j).offset;
+			buf = new char[length+1];
+			read_file.read(buf,length);
+			buf[length] = '\0';
+			in_kv[j].key = mem.at(i)->get_pair(j).key;
+			in_kv[j].value = buf;
+			in_kv[j].timestamp = mem.at(i)->getTime();
+			delete buf;
+		}
+		m.push_back(in_kv);
+		read_file.close();
+	}
+}
+
+//由SSTable产生对应的kv的vector,但是这些SSTable块间有序
+kv* KVStore::read_sorted_kv(vector<SSTablecache*> &mem)
+{
+	string dir = this->getDir();
+	string file_path;
+	int length;
+	int offset;
+	char *buf;
+	kv* in_kv;
+	uint64_t all_count = 0;
+	ifstream read_file;
+	for(int i = 0;i < mem.size();++i){
+		all_count += mem.at(i)->getkey_Count();
+	}
+	in_kv = new kv[all_count];
+	int count = 0;
+	for(int i = 0;i < mem.size();++i){
+		file_path = dir + fname_gen(mem.at(i)->getlevel(),mem.at(i)->getTime(),mem.at(i)->getindex());
+		read_file.open(file_path,ios::binary);
+
+		for(int j = 0;j < mem.at(i)->getkey_Count();++j){
+			length = mem.at(i)->get_pair(j).length;
+			offset = mem.at(i)->get_pair(j).offset;
+			buf = new char[length+1];
+			read_file.read(buf,length);
+			buf[length] = '\0';
+			in_kv[count].key = mem.at(i)->get_pair(j).key;
+			in_kv[count].value = buf;
+			in_kv[count].timestamp = mem.at(i)->getTime();
+			delete buf;
+			count++;
+		}
+
+		read_file.close();
+	}
+}
+
 void KVStore::do_Compac()
 {
 	//首先进行判定
@@ -171,13 +238,14 @@ void KVStore::do_Compac()
 			}
 		}
 
-		//正式开始处理
-		vector<SkipList *> tiny_cache;//用于缓存将要写入level-1的内容
-		kv_box* a_cache = new kv_box[(2*1024*1024-10240-32)/12];//存储tiny_cache获取数据的所需要的信息
-	
+		vector<kv *> zero_kv;
+		//将SSTable的值载入到内存中
+		read_kv(last_level,zero_kv);
+
+		//正式开始处理	
 		//定义对应的指针并且进行初始化
 		uint64_t counter = 0;
-		uint64_t* la_pointer = new uint64_t(last_level.size());
+		uint64_t* la_pointer = new uint64_t[zero_kv.size()];
 		bool *unused = new bool(last_level.size());//用于判断第i个SSTable是否被遍历完
 		for(int i = 0;i < last_level.size();++i){
 			la_pointer[i] = 0;
@@ -185,30 +253,21 @@ void KVStore::do_Compac()
 			counter += this->all_level.at(0)->find_cache(i)->getkey_Count();
 		}
 
-		kv_box *la_box = new kv_box[counter];
+		kv *la_box = new kv[counter];
 		uint64_t count = 0;
 		//先对level-0进行归并排序
 		while(true){
-			int hit = -1;
-			int t_off = 0;
-			int len = 0;
+			int hit = -1;//记录当前命中的SSTable的下标
 			int tmp_min = UINT64_MAX;
 			bool jug = true;
 			for(int i= 0;i < last_level.size();++i){
-				if(tmp_min > this->all_level.at(0)->find_cache(i)->get_pair(la_pointer[i]).key){
-					tmp_min = this->all_level.at(0)->find_cache(i)->get_pair(la_pointer[i]).key;
-					t_off = this->all_level.at(0)->find_cache(i)->get_pair(la_pointer[i]).offset;
-					len = this->all_level.at(0)->find_cache(i)->get_pair(la_pointer[i]).length;
+				if(!unused[i] && tmp_min > zero_kv.at(i)[la_pointer[i]].key){
+					tmp_min = zero_kv.at(i)[la_pointer[i]].key;
 					hit = i;
 				}
 			}
 
-			la_box[count].index = this->all_level.at(0)->find_cache(hit)->getindex();
-			la_box[count].data.key = tmp_min;
-			la_box[count].level = 0;
-			la_box[count].timestamp = this->all_level.at(0)->find_cache(hit)->getTime();
-			la_box[count].data.offset = t_off;
-			la_box[count].data.length = len;
+			la_box[count] = zero_kv.at(hit)[la_pointer[hit]];
 
 			//更新循环参量
 			count++;
@@ -227,13 +286,31 @@ void KVStore::do_Compac()
 			}
 		}
 
+		kv* one_kv;
+
+		kv* sorted_kv;
+
 		//进行level-0的简单的Merge,由于块内有序，可以把level-n(n > 0)当作块内有序
 		if(this_level.size() > 0){
-			Merge_l_zero(la_box,this_level,tiny_cache);
+			sort_vec(this_level);//保证vector中块间的有序
+
+			one_kv = read_sorted_kv(this_level);
+
+			//计算one_kv的长度
+			int len_2;
+			for(int i = 0;i < this_level.size();++i){
+				len_2 += this_level.at(i)->getkey_Count();
+			}
+
+			sorted_kv = merger_sort(la_box,one_kv,count,len_2);
+
+
 		}
 
 		//现在已经得到要写到level-1的文件了
-		
+		//先删除对应的文件
+		del_file(last_level);
+		del_file(this_level);
 
 		//后处理level >= 1的情况 
 		while(this->all_level.at(check_level)->getCount() >= (1 << (check_level+1) + 1)){
@@ -242,12 +319,168 @@ void KVStore::do_Compac()
 	}
 }
 
+void KVStore::del_file(vector<SSTablecache*> &s)
+{
+	string dir = this->getDir();
+	string fileroad;
+
+}
+
+kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2)
+{
+	//进行一个两路的合并
+	kv* sorted_kv = new kv[len_1 + len_2];
+
+	uint64_t index_one = 0;
+	uint64_t index_two = 0;
+
+	bool is_one_end = false;
+
+	uint64_t count = 0;
+
+	while(true){
+		if(one->key > two->key){
+			if(count == 0){
+				sorted_kv[count] = two[index_two];
+				index_two++;
+				count++;
+			}
+			else{
+				if(two[index_two]->key == sorted_kv[count-1]){
+					if(two[index_two]->timestamp > sorted_kv[count-1].timestamp){
+						sorted_kv[count - 1] = two[index_two];
+						index_two++;
+					}
+				}
+				else{
+					sorted_kv[count] = two[index_two];
+					index_two++;
+					count++;
+				}
+			}
+		}
+		else if(one->key < two->key){
+			if(count == 0){
+				sorted_kv[count] = one[index_one];
+				index_one++;
+				count++;
+			}
+			else{
+				if(one[index_one]->key == sorted_kv[count-1]){
+					if(one[index_one]->timestamp > sorted_kv[count-1].timestamp){
+						sorted_kv[count - 1] = one[index_one];
+						index_one++;
+					}
+				}
+				else{
+					sorted_kv[count] = one[index_one];
+					index_one++;
+					count++;
+				}
+			}
+		}
+		else{
+			if(one[index_one].timestamp > two[index_two].timestamp){
+				if(count == 0){
+					sorted_kv[count] = one[index_one];
+					index_one++;
+					count++;
+				}
+				else{
+					if(one[index_one]->key == sorted_kv[count-1]){
+						if(one[index_one]->timestamp > sorted_kv[count-1].timestamp){
+							sorted_kv[count - 1] = one[index_one];
+							index_one++;
+						}
+					}
+					else{
+						sorted_kv[count] = one[index_one];
+						index_one++;
+						count++;
+					}
+				}
+				index_two++;
+			}
+			else{
+				if(count == 0){
+					sorted_kv[count] = two[index_two];
+					index_two++;
+					count++;
+				}
+				else{
+					if(two[index_two]->key == sorted_kv[count-1]){
+						if(two[index_two]->timestamp > sorted_kv[count-1].timestamp){
+							sorted_kv[count - 1] = two[index_two];
+							index_two++;
+						}
+					}
+					else{
+						sorted_kv[count] = two[index_two];
+						index_two++;
+						count++;
+					}
+				}
+				index_one++;
+			}
+		}
+
+		//进行检测
+		if(index_one == len_1){
+			is_one_end = true;
+			break;
+		}
+		if(index_two == len_2){
+			break;
+		}
+	}
+
+	if(is_one_end){
+		for(;index_two < len_2;++index_two){
+			if(count == 0){
+				sorted_kv[count] = two[index_two];;
+				count++;
+			}
+			else{
+				if(two[index_two]->key == sorted_kv[count-1]){
+					if(two[index_two]->timestamp > sorted_kv[count-1].timestamp){
+						sorted_kv[count - 1] = two[index_two];
+					}
+				}
+				else{
+					sorted_kv[count] = two[index_two];
+					count++;
+				}
+			}
+		}
+	}
+	else{
+		for(;index_one < len_1;++index_one){
+			if(count == 0){
+				sorted_kv[count] = one[index_one];
+				count++;
+			}
+			else{
+				if(one[index_one]->key == sorted_kv[count-1]){
+					if(one[index_one]->timestamp > sorted_kv[count-1].timestamp){
+						sorted_kv[count - 1] = one[index_one];
+					}
+				}
+				else{
+					sorted_kv[count] = one[index_one];
+					count++;
+				}
+			}
+		}
+	}
+
+	return sorted_kv;
+}
+
 void KVStore::Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s,vector<SkipList*> &mem)
 {
 	//进行一个两路的归并排序
 	kv_box* a_cache = new kv_box[(2*1024*1024-10240-32)/12];//存储tiny_cache获取数据的所需要的信息
 	int ca_count = 0;//统计当前的a_cache所指的位置
-	sort_vec(s);//保证vector中块间的有序
 
 	uint64_t seq_index = 0;//指向seq_kv的下标
 	uint64_t ss_index = 0;//指向SSTable的下标

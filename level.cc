@@ -1,5 +1,15 @@
 #include "level.h"
+#include "utils.h"
 
+bool isCover(uint64_t k_min,uint64_t k_max,uint64_t ck_min,uint64_t ck_max){
+	if(k_max < ck_min){
+		return false;
+	}
+	if(k_min > ck_max){
+		return false;
+	}
+	return true;
+}
 
 Level::Level(int l)
 {
@@ -36,4 +46,28 @@ int Level::getLevel()
 uint64_t Level::getCount()
 {
     return this->count;
+}
+
+void Level::de_table(uint64_t k_min,uint64_t k_max)
+{
+    //包含删除对应的SSTable
+    uint64_t del_num = 0;
+    for(uint64_t i = 0;i < this->count;++i){
+        if(isCover(k_min,k_max,SSt_chunk.at(i)->getkey_min(),SSt_chunk.at(i)->getkey_max())){
+            //进行删除操作
+            SSTablecache *p = SSt_chunk.at(i);
+            delete p;
+            SSt_chunk.at(i) = nullptr;
+            del_num++;
+        }
+    }
+
+    //进行位置上的调整
+    for(uint64_t i = 0;i < this->count;++i){
+        if(SSt_chunk.at(i) == nullptr){
+            for(int j = i;j < this->count - 1;++j){
+                SSt_chunk[j] = SSt_chunk.at(j+1);
+            }
+        }
+    }
 }
