@@ -107,6 +107,7 @@ bool SSTablecache::Search(unsigned long long &key,int* message)
         if(this->kv_array.at((left+right)/2).key == key){
             message[0] = this->kv_array[(left+right)/2].offset;
             message[1] = this->kv_array[(left+right)/2].length;
+            message[2] = (left+right)/2;
             return true;
         }
         else{

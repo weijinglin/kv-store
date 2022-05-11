@@ -1414,7 +1414,7 @@ std::string KVStore::get(uint64_t key)
         Level *zero_do = this->all_level.at(0);
         uint64_t time = 0;
         string ans;
-        int mes[2] = {0};
+        int mes[3] = {0};
         for(unsigned int i = 0;i < zero_do->getCount();++i){
             if(zero_do->find_cache(i)->Search(key,mes)){
                 if(time > zero_do->find_cache(i)->getTime()){
@@ -1524,5 +1524,83 @@ void KVStore::reset()
  */
 void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &list)
 {	
+	//对scan函数的实现
+	//先扫Memtable
 	this->Memtable.ScanSearch(key1,key2,list);
+
+	//接着从level中读取
+	kv* read_in;//记录从每个SSTable中读到的内容
+	ifstream read_file;
+	//level-0特殊处理，因为区间可能会重叠
+	if(level == 0){
+		return;
+	}
+	else{
+		for(int i = 0;i < this->all_level.at(0)->getCount();++i){
+			if(this->all_level.at(0)->find_cache(i)->getkey_min() > key2 || 
+			this->all_level.at(0)->find_cache(i)->getkey_max() < key1){
+				continue;
+			}
+			else{
+				//区间有重叠，进行处理
+				int mes[3] = {0};
+				uint64_t k_max = (this->all_level.at(0)->find_cache(i)->getkey_max() > key2) ? key2 :
+				this->all_level.at(0)->find_cache(i)->getkey_max();
+				uint64_t k_min = (this->all_level.at(0)->find_cache(i)->getkey_min() < key1) ? key1 :
+				this->all_level.at(0)->find_cache(i)->getkey_min();
+
+				for(int j = k_min;j < k_max;++j){
+					if(this->all_level.at(0)->find_cache(i)->Search(j,mes)){
+						//表示从这里开始的元素都是符合题意的
+						int offset = mes[0];
+						int index = mes[2];//代表对应元素的下标位置
+						string dir = this->getDir();
+						string file_path = dir + fname_gen(0,this->all_level.at(0)->find_cache(i)->getTime(),
+						this->all_level.at(0)->find_cache(i)->getindex());
+						read_file.open(file_path,ios::binary);
+						read_file.seekg(offset,ios::beg);
+
+						char *buf = new char[this->all_level.at(0)->find_cache(i)->length];
+
+						uint64_t read_num = read_file.read(buf,this->all_level.at(0)->find_cache(i)->length);
+
+						buf[read_num] = '\0';
+
+						read_in = new kv[k_max - k_min];
+
+						int count = 0;
+
+						//开始对读进来的字符串进行解析
+						uint64_t read_pos = 0;//标识当前字符串解析的位置
+						while (true)
+						{
+							/* code */
+							char* in_buf = new char(this->all_level.at(0)->find_cache(i)->get_pair(index).length + 1);
+							memcpy(in_buf,buf + read_pos,this->all_level.at(0)->find_cache(i)->get_pair(index).length);
+							in_buf[this->all_level.at(0)->find_cache(i)->get_pair(index).length] = '\0';
+
+							read_in[count].key = this->all_level.at(0)->find_cache(i)->get_pair(index).key;
+							read_in[count].value = in_buf;
+							delete buf;
+							read_in[count].timestamp = this->all_level.at(0)->find_cache(i)->getTime();
+
+							count++;
+							index++;
+
+							if(this->all_level.at(0)->find_cache(i)->get_pair(index).key > k_max){
+								break;
+							}
+						}
+
+						for(int i = 0;i < count;++i){
+							
+						}
+						
+
+
+					}
+				}
+			}
+		}
+	}
 }
