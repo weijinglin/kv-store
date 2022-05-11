@@ -63,12 +63,18 @@ public:
         bytes = 10240 + 32;
         key_count = 0;
         SKNode *p = a.getMinEle();
+        for (int i = 0; i < MAX_LEVEL; ++i)
+        {
+            head->forwards[i] = NIL;
+        }
+        uint64_t counter = 0;
         while(true){
-            this->Insert(p->key,p->val);
-            p = p->forwards[0];
-            if(p == NIL){
+            if(counter >= a.getKetcount()){
                 return;
             }
+            this->Insert(p->key,p->val);
+            p = p->forwards[0];
+            counter++;
         }
     }
     void Insert(uint64_t key, std::string value);
