@@ -136,3 +136,17 @@ void Level::get_table_time(vector<SSTablecache*> &s,int count)
         s.push_back(this->SSt_chunk.at(index_array[i]));
     }
 }
+
+
+void Level::setNum(uint64_t num)
+{
+    this->Num = num;
+}
+
+void Level::set_ele(SSTablecache *in_table,uint64_t index)
+{
+    this->SSt_chunk[count] = in_table;
+    count++;
+    in_table->setlevel(this->level);
+    in_table->setindex(index);
+}

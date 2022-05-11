@@ -11,11 +11,33 @@ uint64_t get_minkey(vector<SSTablecache*> &s);
 
 uint64_t get_maxkey(vector<SSTablecache*> &s);
 
+bool* gen_bloom(SkipList* in_mem);
+
 bool isCover(uint64_t k_min,uint64_t k_max,uint64_t ck_min,uint64_t ck_max);
 
 void sort_vec(vector<SSTablecache *> &s);
 
 string fname_gen(int level,int timestamp,int index);
+
+void parse_filename(string file_name,int &timestamp,uint64_t &index)
+{
+    int commaPos = file_name.find('-');
+    timestamp = atoi(file_name.substr(4, commaPos).c_str());
+    index = atoi(file_name.substr(commaPos + 1).c_str());
+}
+
+uint64_t get_level_num(vector<string> &f,int count){
+    uint64_t max = 0;
+    int time;
+    uint64_t index;
+    for(int i = 0;i < count;++i){
+        parse_filename(f.at(i),time,index);
+        if(max < index){
+            max = index;
+        }
+    }
+    return max;
+}
 
 KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
 {
@@ -28,16 +50,88 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
     if(!(utils::dirExists(copy))){
         return;
     }
-    string sstable = dir + "/level-0";
-    int result = utils::mkdir(sstable.c_str());
-    if(!result){
-        string myFile = sstable + "/data0.sst";
-        ofstream sst(myFile.c_str());
-        sst.close();
+
+    vector<string> file_name;
+    //进行loading的操作
+    int counter = 0;
+    while (true)
+    {
+        /* code */
+        //每个目录进行检查来载入对应的文件
+        string dir_name = copy + "/level-" + std::to_string(counter);
+        if(utils::dirExists(dir_name)){
+            //进行loading的操作
+            this->level++;
+            int file_count = utils::scanDir(dir_name,file_name);
+            uint64_t Num = get_level_num(file_name,file_count);
+            Level *new_level = new Level(counter);
+            this->all_level.push_back(new_level);
+            new_level->setNum(Num);
+            SSTablecache *new_table;
+            for(int i = 0;i < file_count;++i){
+                ifstream read_file(dir_name + "/" + file_name.at(i),ios::binary);
+
+                //parse the file name
+                string name_file = file_name.at(i);
+                int time;
+                uint64_t index;
+                parse_filename(name_file,time,index);
+                if(time > this->timeStamp){
+                    this->timeStamp = time;
+                }
+                uint64_t key_num;
+                uint64_t key_min;
+                uint64_t key_max;
+                uint64_t time_buf;
+                read_file.read((char*)&time_buf,sizeof (time_buf));
+                read_file.read((char*)&key_num,sizeof (key_num));
+                read_file.read((char*)&key_min,sizeof (key_min));
+                read_file.read((char*)&key_max,sizeof (key_max));
+
+                SkipList in_mem;
+
+                vector<uint64_t> keys_arr;
+                keys_arr.resize(key_num);
+                vector<int> off_arr;
+                off_arr.resize(key_num);
+                for(int i = 0;i < key_num;++i){
+                    uint64_t key;
+                    int off;
+                    read_file.read((char*)&(key),8);
+                    read_file.read((char*)&(off),4);
+                    keys_arr[i] = key;
+                    off_arr[i] = off;
+                }
+                //得到了所有的key和value
+                //现在开始进行插入
+                char* buf = new char[2 * 1024 * 1024 - 10240 - 32];
+                read_file.read(buf,2 * 1024 * 1024 - 10240 - 32);
+                int all_read = read_file.gcount();
+
+                int read_pos = 0;
+                char* read_in;
+                //开始对字符串进行解析
+                for(int i = 0;i < key_num - 1;++i){
+                    int length = off_arr[i+1] - off_arr[i];
+                    read_in = new char[length + 1];
+                    memcpy(read_in,buf+read_pos,length);
+                    read_in[length] = '\0';
+                    string in_string = read_in;
+                    in_mem.Insert(keys_arr[i],in_string);
+                    delete [] read_in;
+                    read_pos += length - 1;
+                }
+                new_table = new SSTablecache(time,key_num,key_min,key_max,in_mem.getMinEle(),gen_bloom(&in_mem),off_arr[0]);
+                this->all_level.at(i)->set_ele(new_table,index);
+                delete [] buf;
+            }
+            counter++;
+        }
+        else{
+            break;
+        }
     }
-    else{
-        exit(0);
-    }
+
 }
 
 std::string KVStore::getDir(){
@@ -47,9 +141,29 @@ std::string KVStore::getDir(){
 //要进行数据的保存
 KVStore::~KVStore()
 {
-	SSTablecache *myCache = new SSTablecache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),
-	this->Memtable.getMaxkey(),this->Memtable.getMinEle(),this->Bloom,10240+32 + 12*this->key_count);
-	w_file(myCache);
+    this->key_count = this->Memtable.getKetcount();
+    SSTablecache *myCache = new SSTablecache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),
+    this->Memtable.getMaxkey(),this->Memtable.getMinEle(),this->Bloom,10240+32 + 12*this->key_count);
+    myCache->setlevel(0);
+
+    if(level == 0){
+        Level* new_level = new Level(0);
+        this->all_level.push_back(new_level);
+        string sstable = this->getDir() + "/level-0";
+        int result = utils::mkdir(sstable.c_str());
+        if(result){
+            exit(0);
+        }
+        level++;
+    }
+    this->all_level.at(0)->put_SSTable((myCache));
+    w_file(myCache);
+    do_Compac();
+    for(unsigned int i = 0;i < this->all_level.size();++i){
+        for(unsigned int j = 0;j < this->all_level.at(i)->getCount();++j){
+            delete this->all_level.at(i)->find_cache(j);
+        }
+    }
 }
 
 /**
@@ -83,6 +197,11 @@ void KVStore::put(uint64_t key, const string &s)
         if(level == 0){
             Level* new_level = new Level(0);
             this->all_level.push_back(new_level);
+            string sstable = this->getDir() + "/level-0";
+            int result = utils::mkdir(sstable.c_str());
+            if(result){
+                exit(0);
+            }
             level++;
         }
 
@@ -1518,28 +1637,28 @@ bool KVStore::del(uint64_t key)
  */
 void KVStore::reset()
 {
-	//把所有的目录清空
-	this->Memtable.cleanMem();
-	//删除对应的目录
-	for(int i = 0;i < this->all_level.size();++i){
-		//对应一个目录
-		for(int j = 0;j < this->all_level.at(i)->getCount();++j){
-			string dir = this->getDir();
-			string file_path = dir + fname_gen(i,this->all_level.at(i)->find_cache(j)->getTime(),
-			this->all_level.at(i)->find_cache(j)->getindex());
-			int result = utils::rmfile(file_path);
-			if(result){
-				cout << "rmfile fail" << endl;
-			}
-		}
+    //把所有的目录清空
+    this->Memtable.cleanMem();
+    //删除对应的目录
+    for(int i = 0;i < this->all_level.size();++i){
+        //对应一个目录
+        for(int j = 0;j < this->all_level.at(i)->getCount();++j){
+            string dir = this->getDir();
+            string file_path = dir + fname_gen(i,this->all_level.at(i)->find_cache(j)->getTime(),
+            this->all_level.at(i)->find_cache(j)->getindex());
+            int result = utils::rmfile(file_path.c_str());
+            if(result){
+                cout << "rmfile fail" << endl;
+            }
+        }
 
-		string dir = this->getDir();
-		string dir_name = dir + "/level-" + std::to_string(i);
-		int result = utils::rmdir(dir_name);
-		if(result){
-			cout << "rmdir fail" << endl;
-		}
-	}
+        string dir = this->getDir();
+        string dir_name = dir + "/level-" + std::to_string(i);
+        int result = utils::rmdir(dir_name.c_str());
+        if(result){
+            cout << "rmdir fail" << endl;
+        }
+    }
 }
 
 /**
@@ -1611,9 +1730,9 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
                             /* code */
                             in_buf = new char[this->all_level.at(0)->find_cache(i)->get_pair(index).length + 1];
                             memcpy(in_buf,buf + read_pos,this->all_level.at(0)->find_cache(i)->get_pair(index).length);
-							
-							cout << this->all_level.at(0)->find_cache(i)->get_pair(index).length << endl;
-							cout << "okk : " << read_pos <<endl;
+
+                            cout << this->all_level.at(0)->find_cache(i)->get_pair(index).length << endl;
+                            cout << "okk : " << read_pos <<endl;
 
                             in_buf[this->all_level.at(0)->find_cache(i)->get_pair(index).length] = '\0';
 
@@ -1645,7 +1764,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
                         }
                         delete [] buf;
                         delete [] read_in;
-						break;
+                        break;
                     }
                 }
             }
@@ -1685,11 +1804,11 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
 
                             uint64_t read_num = read_file.gcount();
 
-							//cout << "okk : " << read_num <<endl;
-							//code for debug
-							if(read_num == this->all_level.at(i)->find_cache(j)->getlength()){
-								cout << "illegal reference" << endl;
-							}
+                            //cout << "okk : " << read_num <<endl;
+                            //code for debug
+                            if(read_num == this->all_level.at(i)->find_cache(j)->getlength()){
+                                cout << "illegal reference" << endl;
+                            }
 
                             read_file.close();
 
@@ -1710,17 +1829,17 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
 
                                     int a = 0;
                                 }
-								
+
                                 in_buf = new char[this->all_level.at(i)->find_cache(j)->get_pair(index).length + 1];
                                 memcpy(in_buf,buf + read_pos,this->all_level.at(i)->find_cache(j)->get_pair(index).length);
                                 in_buf[this->all_level.at(i)->find_cache(j)->get_pair(index).length] = '\0';
 
-								//cout << this->all_level.at(0)->find_cache(i)->get_pair(index).length << endl;
-								//cout << "okk : " << read_pos <<endl;
+                                //cout << this->all_level.at(0)->find_cache(i)->get_pair(index).length << endl;
+                                //cout << "okk : " << read_pos <<endl;
 
                                 read_in[count].key = this->all_level.at(i)->find_cache(j)->get_pair(index).key;
                                 read_in[count].value = in_buf;
-								
+
                                 delete [] in_buf;
                                 read_in[count].timestamp = this->all_level.at(i)->find_cache(j)->getTime();
 
@@ -1747,7 +1866,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
                             }
                             delete [] buf;
                             delete [] read_in;
-							break;
+                            break;
                         }
                     }
                 }

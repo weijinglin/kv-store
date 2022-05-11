@@ -36,6 +36,10 @@ public:
 
     void del_all();
 
+    void setNum(uint64_t num);
+
+    void set_ele(SSTablecache *in_table,uint64_t index);
+
     uint64_t get_min_time();
 
     void get_table_time(vector<SSTablecache*> &s,int count);//根据给定的数目初始化对应的vector(选择timestamp和key小的）
