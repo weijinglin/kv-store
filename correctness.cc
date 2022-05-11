@@ -52,6 +52,9 @@ private:
 
         auto ap = list_ans.begin();
         auto sp = list_stu.begin();
+
+        int counter = 0;
+
         while(ap != list_ans.end()) {
             if (sp == list_stu.end()) {
                 EXPECT((*ap).first, -1);
@@ -59,8 +62,15 @@ private:
                 ap++;
             }
             else {
+                counter++;
                 EXPECT((*ap).first, (*sp).first);
                 EXPECT((*ap).second, (*sp).second);
+                // if((*ap).second != (*sp).second){
+                //     std::cout << "num: " << counter << std::endl;
+                //     std::cout << "key" << (*ap).first << std::endl;
+                //     std::cout << (*ap).second.length() << std::endl;
+                //     std::cout << (*sp).second.length() << std::endl;
+                // }
                 ap++;
                 sp++;
             }

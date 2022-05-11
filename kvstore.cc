@@ -47,6 +47,9 @@ std::string KVStore::getDir(){
 //要进行数据的保存
 KVStore::~KVStore()
 {
+	SSTablecache *myCache = new SSTablecache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),
+	this->Memtable.getMaxkey(),this->Memtable.getMinEle(),this->Bloom,10240+32 + 12*this->key_count);
+	w_file(myCache);
 }
 
 /**
@@ -1515,6 +1518,10 @@ bool KVStore::del(uint64_t key)
  */
 void KVStore::reset()
 {
+	//把所有的目录清空
+	this->Memtable.cleanMem();
+	//删除对应的目录
+
 }
 
 /**
@@ -1586,6 +1593,10 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
                             /* code */
                             in_buf = new char[this->all_level.at(0)->find_cache(i)->get_pair(index).length + 1];
                             memcpy(in_buf,buf + read_pos,this->all_level.at(0)->find_cache(i)->get_pair(index).length);
+							
+							cout << this->all_level.at(0)->find_cache(i)->get_pair(index).length << endl;
+							cout << "okk : " << read_pos <<endl;
+
                             in_buf[this->all_level.at(0)->find_cache(i)->get_pair(index).length] = '\0';
 
                             read_in[count].key = this->all_level.at(0)->find_cache(i)->get_pair(index).key;
@@ -1602,7 +1613,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
                             if(this->all_level.at(0)->find_cache(i)->get_pair(index).key > k_max){
                                 break;
                             }
-                            read_pos += this->all_level.at(0)->find_cache(i)->get_pair(index).length;
+                            read_pos += this->all_level.at(0)->find_cache(i)->get_pair(index).length - 1;;
                         }
 
                         for(int i = 0;i < count;++i){
@@ -1616,6 +1627,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
                         }
                         delete [] buf;
                         delete [] read_in;
+						break;
                     }
                 }
             }
@@ -1655,6 +1667,12 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
 
                             uint64_t read_num = read_file.gcount();
 
+							//cout << "okk : " << read_num <<endl;
+							//code for debug
+							if(read_num == this->all_level.at(i)->find_cache(j)->getlength()){
+								cout << "illegal reference" << endl;
+							}
+
                             read_file.close();
 
                             buf[read_num] = '\0';
@@ -1674,12 +1692,17 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
 
                                     int a = 0;
                                 }
+								
                                 in_buf = new char[this->all_level.at(i)->find_cache(j)->get_pair(index).length + 1];
                                 memcpy(in_buf,buf + read_pos,this->all_level.at(i)->find_cache(j)->get_pair(index).length);
                                 in_buf[this->all_level.at(i)->find_cache(j)->get_pair(index).length] = '\0';
 
+								//cout << this->all_level.at(0)->find_cache(i)->get_pair(index).length << endl;
+								//cout << "okk : " << read_pos <<endl;
+
                                 read_in[count].key = this->all_level.at(i)->find_cache(j)->get_pair(index).key;
                                 read_in[count].value = in_buf;
+								
                                 delete [] in_buf;
                                 read_in[count].timestamp = this->all_level.at(i)->find_cache(j)->getTime();
 
@@ -1692,7 +1715,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
                                 if(this->all_level.at(i)->find_cache(j)->get_pair(index).key > k_max){
                                     break;
                                 }
-                                read_pos += this->all_level.at(i)->find_cache(j)->get_pair(index).length;
+                                read_pos += this->all_level.at(i)->find_cache(j)->get_pair(index).length - 1;
                             }
 
                             for(int i = 0;i < count;++i){
@@ -1706,6 +1729,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
                             }
                             delete [] buf;
                             delete [] read_in;
+							break;
                         }
                     }
                 }
