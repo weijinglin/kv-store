@@ -57,6 +57,20 @@ public:
             head->forwards[i] = NIL;
         }
     }
+    SkipList(SkipList &a){
+        head = new SKNode(0, "", SKNodeType::HEAD);
+        NIL = new SKNode(INT_MAX, "", SKNodeType::NIL);
+        bytes = 10240 + 32;
+        key_count = 0;
+        SKNode *p = a.getMinEle();
+        while(true){
+            this->Insert(p->key,p->val);
+            p = p->forwards[0];
+            if(p == NIL){
+                return;
+            }
+        }
+    }
     void Insert(uint64_t key, std::string value);
     unsigned long long getBytes();
     std::string Search(uint64_t key);

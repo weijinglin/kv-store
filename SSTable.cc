@@ -171,6 +171,10 @@ void SSTablecache::setlevel(int level)
     this->level = level;
 }
 
+int SSTablecache::getlength()
+{
+    return this->length;
+}
 
 kv_box* SSTablecache::to_kv_box()
 {

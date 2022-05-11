@@ -107,6 +107,8 @@ public:
 
     int getlevel();
 
+    int getlength();
+
     void setindex(int index);
 
     void setlevel(int level);

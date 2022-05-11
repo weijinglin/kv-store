@@ -1526,17 +1526,20 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
 {	
 	//对scan函数的实现
 	//先扫Memtable
-	this->Memtable.ScanSearch(key1,key2,list);
+	//this->Memtable.ScanSearch(key1,key2,list);
+
+	SkipList mem(this->Memtable);
 
 	//接着从level中读取
 	kv* read_in;//记录从每个SSTable中读到的内容
 	ifstream read_file;
 	//level-0特殊处理，因为区间可能会重叠
 	if(level == 0){
+		this->Memtable.ScanSearch(key1,key2,list);
 		return;
 	}
 	else{
-		for(int i = 0;i < this->all_level.at(0)->getCount();++i){
+		for(int i = this->all_level.at(0)->getCount();i > -1;--i){
 			if(this->all_level.at(0)->find_cache(i)->getkey_min() > key2 || 
 			this->all_level.at(0)->find_cache(i)->getkey_max() < key1){
 				continue;
@@ -1549,7 +1552,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
 				uint64_t k_min = (this->all_level.at(0)->find_cache(i)->getkey_min() < key1) ? key1 :
 				this->all_level.at(0)->find_cache(i)->getkey_min();
 
-				for(int j = k_min;j < k_max;++j){
+				for(uint64_t j = k_min;j <= k_max;++j){
 					if(this->all_level.at(0)->find_cache(i)->Search(j,mes)){
 						//表示从这里开始的元素都是符合题意的
 						int offset = mes[0];
@@ -1557,12 +1560,16 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
 						string dir = this->getDir();
 						string file_path = dir + fname_gen(0,this->all_level.at(0)->find_cache(i)->getTime(),
 						this->all_level.at(0)->find_cache(i)->getindex());
-						read_file.open(file_path,ios::binary);
+						read_file.open(file_path,ios::in|ios::binary);
 						read_file.seekg(offset,ios::beg);
 
-						char *buf = new char[this->all_level.at(0)->find_cache(i)->length];
+						char *buf = new char[this->all_level.at(0)->find_cache(i)->getlength()];
 
-						uint64_t read_num = read_file.read(buf,this->all_level.at(0)->find_cache(i)->length);
+						read_file.read(buf,this->all_level.at(0)->find_cache(i)->getlength());
+
+						uint64_t read_num = read_file.gcount();
+
+						read_file.close();
 
 						buf[read_num] = '\0';
 
@@ -1593,14 +1600,101 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
 						}
 
 						for(int i = 0;i < count;++i){
-							
+							string val = mem.Search(read_in[i].key);
+							if(val != ""){
+								continue;
+							}
+							else{
+								mem.Insert(read_in[i].key,read_in[i].value);
+							}
 						}
-						
+						delete [] read_in;
+					}
+				}
+			}
+		}
 
+		//对于level-n的情况的处理
+		for(int i = 1;i < this->level;++i){
+			//对于第i层的处理
+			for(int j = 0;j < this->all_level.at(i)->getCount();++j){
+				if(key1 > this->all_level.at(i)->find_cache(j)->getkey_max() || 
+				key2 < this->all_level.at(i)->find_cache(j)->getkey_min()){
+					continue;
+				}
+				else{
+					//对于有覆盖的情况的处理
+					//区间有重叠，进行处理
+					int mes[3] = {0};
+					uint64_t k_max = (this->all_level.at(i)->find_cache(j)->getkey_max() > key2) ? key2 :
+					this->all_level.at(i)->find_cache(j)->getkey_max();
+					uint64_t k_min = (this->all_level.at(i)->find_cache(j)->getkey_min() < key1) ? key1 :
+					this->all_level.at(i)->find_cache(j)->getkey_min();
 
+					for(uint64_t m = k_min;m <= k_max;++m){
+						if(this->all_level.at(i)->find_cache(j)->Search(m,mes)){
+							//表示从这里开始的元素都是符合题意的
+							int offset = mes[0];
+							int index = mes[2];//代表对应元素的下标位置
+							string dir = this->getDir();
+							string file_path = dir + fname_gen(i,this->all_level.at(i)->find_cache(j)->getTime(),
+							this->all_level.at(i)->find_cache(j)->getindex());
+							read_file.open(file_path,ios::in|ios::binary);
+							read_file.seekg(offset,ios::beg);
+
+							char *buf = new char[this->all_level.at(i)->find_cache(j)->getlength()];
+
+							read_file.read(buf,this->all_level.at(i)->find_cache(j)->getlength());
+
+							uint64_t read_num = read_file.gcount();
+
+							read_file.close();
+
+							buf[read_num] = '\0';
+
+							read_in = new kv[k_max - k_min];
+
+							int count = 0;
+
+							//开始对读进来的字符串进行解析
+							uint64_t read_pos = 0;//标识当前字符串解析的位置
+							while (true)
+							{
+								/* code */
+								char* in_buf = new char(this->all_level.at(i)->find_cache(j)->get_pair(index).length + 1);
+								memcpy(in_buf,buf + read_pos,this->all_level.at(i)->find_cache(j)->get_pair(index).length);
+								in_buf[this->all_level.at(i)->find_cache(j)->get_pair(index).length] = '\0';
+
+								read_in[count].key = this->all_level.at(i)->find_cache(j)->get_pair(index).key;
+								read_in[count].value = in_buf;
+								delete buf;
+								read_in[count].timestamp = this->all_level.at(i)->find_cache(j)->getTime();
+
+								count++;
+								index++;
+
+								if(this->all_level.at(i)->find_cache(j)->get_pair(index).key > k_max){
+									break;
+								}
+							}
+
+							for(int i = 0;i < count;++i){
+								string val = mem.Search(read_in[i].key);
+								if(val != ""){
+									continue;
+								}
+								else{
+									mem.Insert(read_in[i].key,read_in[i].value);
+								}
+							}
+
+							delete [] read_in;
+						}
 					}
 				}
 			}
 		}
 	}
+
+	mem.ScanSearch(key1,key2,list);
 }
