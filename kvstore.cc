@@ -1521,7 +1521,25 @@ void KVStore::reset()
 	//把所有的目录清空
 	this->Memtable.cleanMem();
 	//删除对应的目录
+	for(int i = 0;i < this->all_level.size();++i){
+		//对应一个目录
+		for(int j = 0;j < this->all_level.at(i)->getCount();++j){
+			string dir = this->getDir();
+			string file_path = dir + fname_gen(i,this->all_level.at(i)->find_cache(j)->getTime(),
+			this->all_level.at(i)->find_cache(j)->getindex());
+			int result = utils::rmfile(file_path);
+			if(result){
+				cout << "rmfile fail" << endl;
+			}
+		}
 
+		string dir = this->getDir();
+		string dir_name = dir + "/level-" + std::to_string(i);
+		int result = utils::rmdir(dir_name);
+		if(result){
+			cout << "rmdir fail" << endl;
+		}
+	}
 }
 
 /**
