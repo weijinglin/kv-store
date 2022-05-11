@@ -1596,10 +1596,13 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
                             count++;
                             index++;
 
+                            if(index >= this->all_level.at(i)->find_cache(j)->getkey_Count()){
+                                break;
+                            }
                             if(this->all_level.at(0)->find_cache(i)->get_pair(index).key > k_max){
                                 break;
                             }
-							read_pos += this->all_level.at(0)->find_cache(i)->get_pair(index).length;
+                            read_pos += this->all_level.at(0)->find_cache(i)->get_pair(index).length;
                         }
 
                         for(int i = 0;i < count;++i){
@@ -1667,9 +1670,10 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
                             while (true)
                             {
                                 /* code */
-								if(count == 236){
-									int a = 0;
-								}
+                                if(count == 236){
+
+                                    int a = 0;
+                                }
                                 in_buf = new char[this->all_level.at(i)->find_cache(j)->get_pair(index).length + 1];
                                 memcpy(in_buf,buf + read_pos,this->all_level.at(i)->find_cache(j)->get_pair(index).length);
                                 in_buf[this->all_level.at(i)->find_cache(j)->get_pair(index).length] = '\0';
@@ -1682,10 +1686,13 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
                                 count++;
                                 index++;
 
+                                if(index >= this->all_level.at(i)->find_cache(j)->getkey_Count()){
+                                    break;
+                                }
                                 if(this->all_level.at(i)->find_cache(j)->get_pair(index).key > k_max){
                                     break;
                                 }
-								read_pos += this->all_level.at(i)->find_cache(j)->get_pair(index).length;
+                                read_pos += this->all_level.at(i)->find_cache(j)->get_pair(index).length;
                             }
 
                             for(int i = 0;i < count;++i){
