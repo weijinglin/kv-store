@@ -35,6 +35,10 @@ private:
             EXPECT(std::string(i+1, 's'), store.get(i));
         phase();
 
+        if(max > 600){
+            int a = 0;
+        }
+
         // Test scan
         std::list<std::pair<uint64_t, std::string> > list_ans;
         std::list<std::pair<uint64_t, std::string> > list_stu;

@@ -1539,7 +1539,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
 		return;
 	}
 	else{
-		for(int i = this->all_level.at(0)->getCount();i > -1;--i){
+		for(int i = this->all_level.at(0)->getCount()-1;i > -1;--i){
 			if(this->all_level.at(0)->find_cache(i)->getkey_min() > key2 || 
 			this->all_level.at(0)->find_cache(i)->getkey_max() < key1){
 				continue;
@@ -1593,6 +1593,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
 
 							count++;
 							index++;
+							read_pos += this->all_level.at(0)->find_cache(i)->get_pair(index).length;
 
 							if(this->all_level.at(0)->find_cache(i)->get_pair(index).key > k_max){
 								break;
@@ -1672,6 +1673,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
 
 								count++;
 								index++;
+								read_pos += this->all_level.at(i)->find_cache(j)->get_pair(index).length;
 
 								if(this->all_level.at(i)->find_cache(j)->get_pair(index).key > k_max){
 									break;
