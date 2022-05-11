@@ -25,7 +25,7 @@ SSTablecache::SSTablecache(const SSTablecache& a)
     this->Bloom = new bool[10240];
     memcpy(Bloom,a.Bloom,10240);
 
-    this->kv_array.resize(key_count);
+    //this->kv_array.resize(key_count);
     for(int i = 0;i < key_count;++i){
         this->kv_array.push_back(a.kv_array.at(i));
     }
@@ -40,7 +40,7 @@ unsigned long long max,SKNode* p,bool *filter,int offset):timeStamp(time),key_co
     memcpy(Bloom,filter,10240);
 
     SKNode* NIL = new SKNode(INT_MAX, "", SKNodeType::NIL);
-    this->kv_array.resize(key_count);
+    //this->kv_array.resize(key_count);
     int index = 0;
     while(p->val != ""){
         kv_pair gen_kv(p->key,offset);
@@ -89,22 +89,22 @@ bool SSTablecache::Search(unsigned long long &key,int* message)
         uint64_t right = key_count;
         while(right != left){
             if(this->kv_array.at((left+right)/2).key > key){
-                left = (left + right)/2;
+                right = (left + right)/2 - 1;
                 continue;
             }
             else{
-                if(this->kv_array.at((left+right)/2).key = key){
+                if(this->kv_array.at((left+right)/2).key == key){
                     message[0] = this->kv_array[(left+right)/2].offset;
                     message[1] = this->kv_array[(left+right)/2].length;
                     return true;
                 }
                 else{
-                    right = (left+right)/2;
+                    left = (left+right)/2 + 1;
                     continue;
                 }
             }
         }
-        if(this->kv_array.at((left+right)/2).key = key){
+        if(this->kv_array.at((left+right)/2).key == key){
             message[0] = this->kv_array[(left+right)/2].offset;
             message[1] = this->kv_array[(left+right)/2].length;
             return true;

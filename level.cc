@@ -64,7 +64,7 @@ void Level::de_table(uint64_t k_min,uint64_t k_max)
         }
     }
 
-    uint64_t find_num = 1;
+    uint64_t find_num = 0;
     //进行位置上的调整
     for(uint64_t i = 0;i < this->count;++i){
         if(SSt_chunk.at(i) == nullptr){
@@ -72,6 +72,7 @@ void Level::de_table(uint64_t k_min,uint64_t k_max)
                 SSt_chunk[j] = SSt_chunk.at(j+1);
             }
             find_num++;
+            i--;
         }
         if(find_num == del_num){
             break;
@@ -129,6 +130,7 @@ void Level::get_table_time(vector<SSTablecache*> &s,int count)
         }
         index_array[i] = index;
         hit[index] = true;
+        time_min = UINT64_MAX;
     }
     for(int i = 0;i < count;++i){
         s.push_back(this->SSt_chunk.at(index_array[i]));

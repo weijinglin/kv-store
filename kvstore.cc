@@ -196,6 +196,15 @@ void KVStore::gen_table_kv(kv* mem,uint64_t len,vector<SSTablecache*> &s_list,ve
 			in_mem->Insert(mem[i].key,mem[i].value);
 		}
 	}
+    if(bytes > 10240 + 32){
+        in_count = in_mem->getKetcount();
+        in_Bloom = gen_bloom(in_mem);
+        in_table = new SSTablecache(time,in_count,in_mem->getMinkey(),in_mem->getMaxkey(),
+        in_mem->getMinEle(),in_Bloom,10240+32+12*in_count);
+
+        s_list.push_back(in_table);
+        skip.push_back(in_mem);
+    }
 
 }
 
@@ -255,6 +264,7 @@ kv* KVStore::read_sorted_kv(vector<SSTablecache*> &mem)
 			length = mem.at(i)->get_pair(j).length;
 			offset = mem.at(i)->get_pair(j).offset;
 			buf = new char[length+1];
+            read_file.seekg(offset,ios::beg);
 			read_file.read(buf,length);
 			buf[length] = '\0';
 			in_kv[count].key = mem.at(i)->get_pair(j).key;
@@ -413,6 +423,15 @@ void KVStore::do_Compac()
             w_file_plus(in_table.at(i),in_mem.at(i));
         }
 
+        //进行相应资源的回收
+        delete [] sorted_kv;
+        delete [] la_box;
+
+        for(unsigned int i = 0;i < in_mem.size();++i){
+            delete in_mem.at(i);
+        }
+        in_mem.clear();
+
 		//后处理level >= 1的情况 
         while(this->all_level.at(check_level)->getCount() >= ((1 << (check_level+1)) + 1)){
             //对于更高层的Compaction的处理
@@ -509,6 +528,15 @@ void KVStore::do_Compac()
             }
 
             check_level++;
+
+            //进行相应资源的回收
+            delete [] this_kv;
+            delete [] sorted_kv;
+
+            for(unsigned int i = 0;i < in_mem.size();++i){
+                delete in_mem.at(i);
+            }
+            in_mem.clear();
 		}
 	}
 }
@@ -1375,13 +1403,16 @@ std::string KVStore::get(uint64_t key)
     else{
         //level-0采用遍历的方式
         //level-n采用区间识别的方式
-
+        //cout << key << endl;
         //level-0
         if(level == 0){
             return "";
         }
+        if(key > 65468){
+            int a = 0;
+        }
         Level *zero_do = this->all_level.at(0);
-        int time = -1;
+        uint64_t time = 0;
         string ans;
         int mes[2] = {0};
         for(unsigned int i = 0;i < zero_do->getCount();++i){
@@ -1437,7 +1468,7 @@ std::string KVStore::get(uint64_t key)
                         read_file.read(buffer,length);
                         buffer[length] = '\0';
                         ans = buffer;
-                        time = zero_do->find_cache(i)->getTime();
+                        time = this->all_level.at(i)->find_cache(j)->getTime();
                         delete [] buffer;
                         read_file.close();
                         if(ans == "~DELETED~"){
