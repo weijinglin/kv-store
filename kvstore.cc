@@ -739,12 +739,14 @@ void KVStore::w_file_plus(SSTablecache* myCache,SkipList * mem)
     }
 
     //write value
+    string write_in = "";
     for(unsigned int i = 0;i < key_count;++i){
-        data_file.write(q->val.c_str(),q->val.length());
+        //data_file.write(q->val.c_str(),q->val.length());
+        write_in += q->val.c_str();
         //这相当与这条指令的二进制写入data_file << q->val;
         q = q->forwards[0];
     }
-
+    data_file.write(write_in.c_str(),write_in.length());
     data_file.close();
 }
 
@@ -1062,9 +1064,6 @@ void KVStore::w_file(SSTablecache* myCache)
                 cout << "key_count " << key_count << endl;
                 cout << "indeed " << i << endl;
                 cout << q->key;
-            }
-            if(i == key_count - 10){
-                int a = 0;
             }
             //这相当与这条指令的二进制写入data_file << q->val;
             q = q->forwards[0];
