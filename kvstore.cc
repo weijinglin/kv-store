@@ -104,6 +104,8 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
                 vector<int> off_arr;
                 off_arr.resize(key_num);
 
+
+
                 //读取布隆过滤器
                 bool *filter = new bool[10240];
 
@@ -127,7 +129,7 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
                 int read_pos = 0;
                 char* read_in;
                 //开始对字符串进行解析
-                for(unsigned int i = 0;i < key_num - 1;++i){
+                for(unsigned int i = 0;i + 1 < key_num;++i){
                     int length = off_arr[i+1] - off_arr[i];
                     read_in = new char[length + 1];
                     memcpy(read_in,buf+read_pos,length);
@@ -137,18 +139,20 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
                     delete [] read_in;
                     read_pos += length;
                 }
-                //对于最后一段的读写
-                int length = all_read - off_arr[key_num-1] + off_arr[0];
+                if(key_num > 0){
+                    //对于最后一段的读写
+                    int length = all_read - off_arr[key_num-1] + off_arr[0];
 
-                read_in = new char[length+1];
-                memcpy(read_in,buf+read_pos,length);
-                read_in[length] = '\0';
-                string in_string = read_in;
-                in_mem.Insert(keys_arr[key_num-1],in_string);
-                delete [] read_in;
+                    read_in = new char[length+1];
+                    memcpy(read_in,buf+read_pos,length);
+                    read_in[length] = '\0';
+                    string in_string = read_in;
+                    in_mem.Insert(keys_arr[key_num-1],in_string);
+                    delete [] read_in;
+                    new_table = new SSTablecache(time,key_num,key_min,key_max,in_mem.getMinEle(),gen_bloom(&in_mem),off_arr[0]);
+                    this->all_level.at(counter)->set_ele(new_table,index);
 
-                new_table = new SSTablecache(time,key_num,key_min,key_max,in_mem.getMinEle(),gen_bloom(&in_mem),off_arr[0]);
-                this->all_level.at(counter)->set_ele(new_table,index);
+                }
                 delete [] buf;
             }
             file_name.clear();
@@ -466,7 +470,7 @@ void KVStore::do_Compac()
         //定义对应的指针并且进行初始化
         uint64_t counter = 0;
         uint64_t* la_pointer = new uint64_t[zero_kv.size()];
-        bool *unused = new bool(last_level.size());//用于判断第i个SSTable是否被遍历完
+        bool *unused = new bool[last_level.size()];//用于判断第i个SSTable是否被遍历完
         for(unsigned int i = 0;i < last_level.size();++i){
             la_pointer[i] = 0;
             unused[i] = false;
@@ -513,7 +517,7 @@ void KVStore::do_Compac()
 
         zero_kv.clear();
 
-        kv* one_kv;
+        kv* one_kv = nullptr;
 
         kv* sorted_kv;
 
@@ -576,6 +580,11 @@ void KVStore::do_Compac()
         //进行相应资源的回收
         delete [] sorted_kv;
         delete [] la_box;
+        delete [] la_pointer;
+        delete [] unused;
+        if(one_kv){
+            delete [] one_kv;
+        }
 
         for(unsigned int i = 0;i < in_mem.size();++i){
             delete in_mem.at(i);
@@ -619,7 +628,7 @@ void KVStore::do_Compac()
 
             kv* sorted_kv;
             kv* this_kv;
-            kv* next_kv;
+            kv* next_kv = nullptr;;
             int len_this = 0;
             int len_next = 0;
             int length;
@@ -691,6 +700,9 @@ void KVStore::do_Compac()
             //进行相应资源的回收
             delete [] this_kv;
             delete [] sorted_kv;
+            if(next_kv){
+                delete [] next_kv;
+            }
 
             for(unsigned int i = 0;i < in_mem.size();++i){
                 delete in_mem.at(i);
