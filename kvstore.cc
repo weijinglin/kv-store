@@ -309,6 +309,12 @@ void KVStore::gen_table_kv(kv* mem,uint64_t len,vector<SSTablecache*> &s_list,ve
 
     for(unsigned int i = 0;i < len;++i){
         by_bef = bytes + KEY_LENGTH + OFFSET_LENGTH + mem[i].value.length();
+        if(i > 9200){
+            uint64_t a = mem[i].key;
+            string val = mem[i].value;
+            int b= 0;
+            b = a;
+        }
         if(by_bef > 2 * 1024 * 1024){
             in_count = in_mem->getKetcount();
             in_Bloom = gen_bloom(in_mem);
@@ -512,6 +518,8 @@ void KVStore::do_Compac()
 
         int length;
 
+        uint64_t merge_time;//用于记录块内合并的次数，用于得到正确的长度信息
+
         //进行level-0的简单的Merge,由于块内有序，可以把level-n(n > 0)当作块内有序
         if(this_level.size() > 0){
             sort_vec(this_level);//保证vector中块间的有序
@@ -523,17 +531,17 @@ void KVStore::do_Compac()
                 len_2 += this_level.at(i)->getkey_Count();
             }
 
-            sorted_kv = merger_sort(la_box,one_kv,count,len_2);
-            length = count + len_2;
+            sorted_kv = merger_sort(la_box,one_kv,count,len_2,merge_time);
+            length = merge_time;
         }
         else{
             if(level == 2){
-                sorted_kv = merge_self(la_box,count,true);
-                length = count;
+                sorted_kv = merge_self(la_box,count,true,merge_time);
+                length = merge_time;
             }
             else{
-                sorted_kv = merge_self(la_box,count,false);
-                length = count;
+                sorted_kv = merge_self(la_box,count,false,merge_time);
+                length = merge_time;
             }
         }
 
@@ -613,6 +621,8 @@ void KVStore::do_Compac()
             int len_next = 0;
             int length;
 
+            uint64_t merge_time;
+
             sort_vec(last_level);
 
             this_kv = read_sorted_kv(last_level);
@@ -632,18 +642,18 @@ void KVStore::do_Compac()
                     len_next += this_level.at(i)->getkey_Count();
                 }
 
-                sorted_kv = merger_sort(this_kv,next_kv,len_this,len_next);
-                length = len_this + len_next;
+                sorted_kv = merger_sort(this_kv,next_kv,len_this,len_next,merge_time);
+                length = merge_time;
 
             }
             else{
                 if(level == check_level + 1){
-                    sorted_kv = merge_self(this_kv,len_this,true);
-                    length = len_this;
+                    sorted_kv = merge_self(this_kv,len_this,true,merge_time);
+                    length = merge_time;
                 }
                 else{
-                    sorted_kv = merge_self(this_kv,len_this,false);
-                    length = len_this;
+                    sorted_kv = merge_self(this_kv,len_this,false,merge_time);
+                    length = merge_time;
                 }
 
             }
@@ -753,9 +763,10 @@ void KVStore::del_file(vector<SSTablecache*> &s)
     }
 }
 
-kv* KVStore::merge_self(kv* mem,uint64_t len,bool is_last)
+kv* KVStore::merge_self(kv* mem,uint64_t len,bool is_last,uint64_t &mer_time)
 {
     kv* sorted_kv = new kv[len];
+    mer_time = 0;
     //注意：对于删除的value要进行处理
     uint64_t count = 0;
 
@@ -771,6 +782,7 @@ kv* KVStore::merge_self(kv* mem,uint64_t len,bool is_last)
         }
         else{
             if(sorted_kv[count-1].key == mem[index].key){
+                mer_time++;
                 if(mem[index].timestamp > sorted_kv[count-1].timestamp){
                     sorted_kv[count-1] = mem[index];
                 }
@@ -781,13 +793,15 @@ kv* KVStore::merge_self(kv* mem,uint64_t len,bool is_last)
             }
         }
     }
+    mer_time = count;
     return sorted_kv;
 }
 
-kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2)
+kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2,uint64_t &mer_time)
 {
     //进行一个两路的合并
     kv* sorted_kv = new kv[len_1 + len_2];
+    mer_time = 0;
 
     uint64_t index_one = 0;
     uint64_t index_two = 0;
@@ -805,6 +819,7 @@ kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2)
             }
             else{
                 if(two[index_two].key == sorted_kv[count-1].key){
+                    mer_time++;
                     if(two[index_two].timestamp > sorted_kv[count-1].timestamp){
                         sorted_kv[count - 1] = two[index_two];
                         index_two++;
@@ -825,6 +840,7 @@ kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2)
             }
             else{
                 if(one[index_one].key == sorted_kv[count-1].key){
+                    mer_time++;
                     if(one[index_one].timestamp > sorted_kv[count-1].timestamp){
                         sorted_kv[count - 1] = one[index_one];
                         index_one++;
@@ -846,6 +862,7 @@ kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2)
                 }
                 else{
                     if(one[index_one].key == sorted_kv[count-1].key){
+                        mer_time++;
                         if(one[index_one].timestamp > sorted_kv[count-1].timestamp){
                             sorted_kv[count - 1] = one[index_one];
                             index_one++;
@@ -867,6 +884,7 @@ kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2)
                 }
                 else{
                     if(two[index_two].key == sorted_kv[count-1].key){
+                        mer_time++;
                         if(two[index_two].timestamp > sorted_kv[count-1].timestamp){
                             sorted_kv[count - 1] = two[index_two];
                             index_two++;
@@ -900,6 +918,7 @@ kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2)
             }
             else{
                 if(two[index_two].key == sorted_kv[count-1].key){
+                    mer_time++;
                     if(two[index_two].timestamp > sorted_kv[count-1].timestamp){
                         sorted_kv[count - 1] = two[index_two];
                     }
@@ -919,6 +938,7 @@ kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2)
             }
             else{
                 if(one[index_one].key == sorted_kv[count-1].key){
+                    mer_time++;
                     if(one[index_one].timestamp > sorted_kv[count-1].timestamp){
                         sorted_kv[count - 1] = one[index_one];
                     }
@@ -930,6 +950,7 @@ kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2)
             }
         }
     }
+    mer_time = count;
 
     return sorted_kv;
 }

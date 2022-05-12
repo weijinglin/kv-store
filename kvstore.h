@@ -53,13 +53,13 @@ public:
 
 	kv* read_sorted_kv(vector<SSTablecache*> &mem);
 
-	kv* merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2);
+    kv* merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2,uint64_t &mer_time);
 
 	void del_file(vector<SSTablecache*> &s);
 
 	void gen_table_kv(kv* mem,uint64_t len,vector<SSTablecache*> &s_list,vector<SkipList*> &skip);
 
-    kv* merge_self(kv* mem,uint64_t len,bool is_last);
+    kv* merge_self(kv* mem,uint64_t len,bool is_lastint ,uint64_t &mer_time);
 
 	void w_file_plus(SSTablecache* myCache,SkipList * mem);
 };
