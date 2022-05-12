@@ -46,7 +46,7 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
     this->timeStamp = 1;
     this->key_count = 0;
     this->level = 0;
-    Bloom = new bool[10*1024];
+    this->Bloom = new bool[10*1024];
     if(!(utils::dirExists(copy))){
         return;
     }
@@ -421,6 +421,9 @@ kv* KVStore::read_sorted_kv(vector<SSTablecache*> &mem)
 void KVStore::do_Compac()
 {
     //首先进行判定
+//    if(this->timeStamp >= 257){
+//        cout << this->all_level.at(2)->getCount() << endl;
+//    }
     if(this->all_level.at(0)->getCount() >= 3){
         //触发compaction
         int check_level = 1;//used to check for all the level compaction condition
@@ -535,7 +538,7 @@ void KVStore::do_Compac()
             length = merge_time;
         }
         else{
-            if(level == 2){
+            if(level == 2 && this->all_level.size() == 1){
                 sorted_kv = merge_self(la_box,count,true,merge_time);
                 length = merge_time;
             }
@@ -550,7 +553,7 @@ void KVStore::do_Compac()
         del_file(last_level);
         del_file(this_level);
         //删除对应的SSTable缓存
-        this->all_level.at(1)->de_table(k_min,k_max);
+        this->all_level.at(1)->del_list(this_level);
         this->all_level.at(0)->del_all();
 
         //通过kv* 获得对应的SSTable，并push到对应的level
@@ -662,9 +665,9 @@ void KVStore::do_Compac()
             //先删除对应的文件
             del_file(last_level);
             del_file(this_level);
-            //删除对应的SSTable缓存
-            this->all_level.at(check_level+1)->de_table(k_min,k_max);
-            this->all_level.at(check_level)->de_table(k_min,k_max);
+            //删除对应的SSTable缓存，此处删除的逻辑需要修改，根据给定的last_level进行删除
+            this->all_level.at(check_level+1)->del_list(this_level);
+            this->all_level.at(check_level)->del_list(last_level);
 
             //通过kv* 获得对应的SSTable，并push到对应的level
             vector<SSTablecache*> in_table;

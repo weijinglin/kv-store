@@ -68,7 +68,7 @@ void Level::de_table(uint64_t k_min,uint64_t k_max)
     //进行位置上的调整
     for(uint64_t i = 0;i < this->count;++i){
         if(SSt_chunk.at(i) == nullptr){
-            for(int j = i;j < this->count - find_num;++j){
+            for(uint64_t j = i;j < this->count - find_num;++j){
                 SSt_chunk[j] = SSt_chunk.at(j+1);
             }
             find_num++;
@@ -149,4 +149,38 @@ void Level::set_ele(SSTablecache *in_table,uint64_t index)
     count++;
     in_table->setlevel(this->level);
     in_table->setindex(index);
+}
+
+void Level::del_list(vector<SSTablecache*> &s)
+{
+    uint64_t del_num = 0;
+    for(unsigned int i = 0;i < s.size();++i){
+        for(unsigned int j = 0;j < this->count;++j){
+            if(this->SSt_chunk.at(j) == nullptr){
+                continue;
+            }
+            if(this->SSt_chunk.at(j)->getindex() == s.at(i)->getindex()){
+                delete this->SSt_chunk[j];
+                del_num++;
+                this->SSt_chunk[j] = nullptr;
+            }
+        }
+    }
+
+    uint64_t find_num = 0;
+    //进行位置上的调整
+    for(unsigned int i = 0;i < this->count;++i){
+        if(this->SSt_chunk.at(i) == nullptr){
+            //进行位置上的调整
+            for(unsigned int j = i;j < this->count - find_num - 1;++j){
+                this->SSt_chunk[j] = this->SSt_chunk[j+1];
+            }
+            find_num++;
+            i--;
+            if(find_num == del_num){
+                break;
+            }
+        }
+    }
+    count -= s.size();
 }

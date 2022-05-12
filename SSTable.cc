@@ -59,7 +59,7 @@ unsigned long long max,SKNode* p,bool *filter,int offset):timeStamp(time),key_co
 //判断元素是否在对应的SSTable中,如果找到了则返回对应true,并把offset和length存在message中
 bool SSTablecache::Search(unsigned long long &key,int* message)
 {
-    
+
     unsigned int hash[4] = {0};
 
     // for(int i = 0; i < 10240;++i){
@@ -87,7 +87,7 @@ bool SSTablecache::Search(unsigned long long &key,int* message)
         //进行二分查找
         uint64_t left = 0;
         uint64_t right = key_count;
-        while(right != left){
+        while(right > left){
             if(this->kv_array.at((left+right)/2).key > key){
                 right = (left + right)/2 - 1;
                 continue;
@@ -96,6 +96,7 @@ bool SSTablecache::Search(unsigned long long &key,int* message)
                 if(this->kv_array.at((left+right)/2).key == key){
                     message[0] = this->kv_array[(left+right)/2].offset;
                     message[1] = this->kv_array[(left+right)/2].length;
+                    message[2] = (left+right)/2;
                     return true;
                 }
                 else{
@@ -103,6 +104,11 @@ bool SSTablecache::Search(unsigned long long &key,int* message)
                     continue;
                 }
             }
+        }
+
+        //防止非法访问
+        if((left+right)/2 == key_count){
+            return false;
         }
         if(this->kv_array.at((left+right)/2).key == key){
             message[0] = this->kv_array[(left+right)/2].offset;
@@ -113,7 +119,7 @@ bool SSTablecache::Search(unsigned long long &key,int* message)
         else{
             return false;
         }
-        
+
     }
     else{
         return false;
@@ -128,7 +134,7 @@ SSTablecache::~SSTablecache()
 
 void SSTablecache::list_key()
 {
-    
+
 }
 
 unsigned long long SSTablecache::getTime()

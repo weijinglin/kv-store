@@ -13,8 +13,8 @@ class Level
 private:
     /* data */
     uint64_t count;//used to log the number of SSTable the level store
-    int level;// used to log for the level of the level 
-    vector<SSTablecache*> SSt_chunk;//used to store the SSTable in the level    
+    int level;// used to log for the level of the level
+    vector<SSTablecache*> SSt_chunk;//used to store the SSTable in the level
     uint64_t Num;//used to find the corrsponding file in the level(it represent the num of file the level has ever haven)
 
     //Num和count的区别在于一个只增不减，一个可增可减
@@ -41,6 +41,8 @@ public:
     void set_ele(SSTablecache *in_table,uint64_t index);
 
     uint64_t get_min_time();
+
+    void del_list(vector<SSTablecache*> &s);
 
     void get_table_time(vector<SSTablecache*> &s,int count);//根据给定的数目初始化对应的vector(选择timestamp和key小的）
 };
