@@ -2,13 +2,13 @@
 #include "utils.h"
 
 bool isCover(uint64_t k_min,uint64_t k_max,uint64_t ck_min,uint64_t ck_max){
-	if(k_max < ck_min){
-		return false;
-	}
-	if(k_min > ck_max){
-		return false;
-	}
-	return true;
+    if(k_max < ck_min){
+        return false;
+    }
+    if(k_min > ck_max){
+        return false;
+    }
+    return true;
 }
 
 Level::Level(int l)

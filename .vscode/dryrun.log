@@ -7,10 +7,12 @@ g++ -std=c++14 -Wall -g   -c -o level.o level.cc
 g++ -std=c++14 -Wall -g   -c -o SSTable.o SSTable.cc
  
 g++ -std=c++14 -Wall -g   -c -o SkipList.o SkipList.cc
-g++ -std=c++14 -Wall -g   -c -o kvstore.o kvstore.cc
-g++ -std=c++14 -Wall -g    correctness.o level.o SSTable.o SkipList.o kvstore.o   -o correctness
  
+g++ -std=c++14 -Wall -g   -c -o kvstore.o kvstore.cc
+ 
+g++ -std=c++14 -Wall -g    correctness.o level.o SSTable.o SkipList.o kvstore.o   -o correctness
 g++ -std=c++14 -Wall -g   -c -o persistence.o persistence.cc
+ 
 g++ -std=c++14 -Wall -g    persistence.o level.o SSTable.o SkipList.o kvstore.o   -o persistence
 make.exe: Leaving directory 'd:/programforVS/LSM2.0/lsm-kv'
  

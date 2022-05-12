@@ -49,7 +49,7 @@ public:
     SkipList()
     {
         head = new SKNode(0, "", SKNodeType::HEAD);
-        NIL = new SKNode(INT_MAX, "", SKNodeType::NIL);
+        NIL = new SKNode(UINT64_MAX, "", SKNodeType::NIL);
         bytes = 10240 + 32;
         key_count = 0;
         for (int i = 0; i < MAX_LEVEL; ++i)

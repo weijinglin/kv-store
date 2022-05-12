@@ -59,7 +59,7 @@ public:
 
 	void gen_table_kv(kv* mem,uint64_t len,vector<SSTablecache*> &s_list,vector<SkipList*> &skip);
 
-    kv* merge_self(kv* mem,uint64_t len);
+    kv* merge_self(kv* mem,uint64_t len,bool is_last);
 
 	void w_file_plus(SSTablecache* myCache,SkipList * mem);
 };

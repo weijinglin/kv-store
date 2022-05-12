@@ -63,6 +63,15 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
             //进行loading的操作
             this->level++;
             int file_count = utils::scanDir(dir_name,file_name);
+
+            if(file_count == 0){
+                Level *new_level = new Level(counter);
+                this->all_level.push_back(new_level);
+                counter++;
+                continue;
+            }
+
+            //对于得到的文件进行解析
             uint64_t Num = get_level_num(file_name,file_count);
             Level *new_level = new Level(counter);
             this->all_level.push_back(new_level);
@@ -94,7 +103,13 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
                 keys_arr.resize(key_num);
                 vector<int> off_arr;
                 off_arr.resize(key_num);
-                for(int i = 0;i < key_num;++i){
+
+                //读取布隆过滤器
+                bool *filter = new bool[10240];
+
+                read_file.read((char*)filter,10240);
+
+                for(unsigned int i = 0;i < key_num;++i){
                     uint64_t key;
                     int off;
                     read_file.read((char*)&(key),8);
@@ -107,11 +122,12 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
                 char* buf = new char[2 * 1024 * 1024 - 10240 - 32];
                 read_file.read(buf,2 * 1024 * 1024 - 10240 - 32);
                 int all_read = read_file.gcount();
+                buf[all_read] = '\0';
 
                 int read_pos = 0;
                 char* read_in;
                 //开始对字符串进行解析
-                for(int i = 0;i < key_num - 1;++i){
+                for(unsigned int i = 0;i < key_num - 1;++i){
                     int length = off_arr[i+1] - off_arr[i];
                     read_in = new char[length + 1];
                     memcpy(read_in,buf+read_pos,length);
@@ -119,12 +135,23 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
                     string in_string = read_in;
                     in_mem.Insert(keys_arr[i],in_string);
                     delete [] read_in;
-                    read_pos += length - 1;
+                    read_pos += length;
                 }
+                //对于最后一段的读写
+                int length = all_read - off_arr[key_num-1] + off_arr[0];
+
+                read_in = new char[length+1];
+                memcpy(read_in,buf+read_pos,length);
+                read_in[length] = '\0';
+                string in_string = read_in;
+                in_mem.Insert(keys_arr[key_num-1],in_string);
+                delete [] read_in;
+
                 new_table = new SSTablecache(time,key_num,key_min,key_max,in_mem.getMinEle(),gen_bloom(&in_mem),off_arr[0]);
-                this->all_level.at(i)->set_ele(new_table,index);
+                this->all_level.at(counter)->set_ele(new_table,index);
                 delete [] buf;
             }
+            file_name.clear();
             counter++;
         }
         else{
@@ -266,22 +293,6 @@ bool* gen_bloom(SkipList* in_mem){
     return Bloom_out;
 }
 
-//输入一个SkipList的数组，初始化一个含SSTable的数组
-void KVStore::gen_sstable(vector<SkipList *> &mem,vector<SSTablecache *> &s_list){
-    uint64_t in_time = this->timeStamp;
-    uint64_t in_count;
-    int in_offset;
-    bool* in_Bloom;
-    SSTablecache* in_table;
-    for(unsigned int i = 0;i < mem.size();++i){
-        in_count = mem.at(i)->getKetcount();
-        in_Bloom = gen_bloom(mem.at(i));
-        in_offset = 32 + 10*1024 + in_count * 12;
-        in_table = new SSTablecache(in_time,in_count,mem.at(i)->getMinkey(),mem.at(i)->getMaxkey(),
-        mem.at(i)->getMinEle(),in_Bloom,in_offset);
-        s_list.push_back(in_table);
-    }
-}
 
 //给定所有的key-value对，产生对应的SSTable列表
 void KVStore::gen_table_kv(kv* mem,uint64_t len,vector<SSTablecache*> &s_list,vector<SkipList*> &skip)
@@ -516,8 +527,14 @@ void KVStore::do_Compac()
             length = count + len_2;
         }
         else{
-            sorted_kv = merge_self(la_box,count);
-            length = count;
+            if(level == 2){
+                sorted_kv = merge_self(la_box,count,true);
+                length = count;
+            }
+            else{
+                sorted_kv = merge_self(la_box,count,false);
+                length = count;
+            }
         }
 
         //现在已经得到要写到level-1的文件了
@@ -620,8 +637,15 @@ void KVStore::do_Compac()
 
             }
             else{
-                sorted_kv = merge_self(this_kv,len_this);
-                length = len_this;
+                if(level == check_level + 1){
+                    sorted_kv = merge_self(this_kv,len_this,true);
+                    length = len_this;
+                }
+                else{
+                    sorted_kv = merge_self(this_kv,len_this,false);
+                    length = len_this;
+                }
+
             }
 
             //现在已经得到要写到level-1的文件了
@@ -729,7 +753,7 @@ void KVStore::del_file(vector<SSTablecache*> &s)
     }
 }
 
-kv* KVStore::merge_self(kv* mem,uint64_t len)
+kv* KVStore::merge_self(kv* mem,uint64_t len,bool is_last)
 {
     kv* sorted_kv = new kv[len];
     //注意：对于删除的value要进行处理
@@ -738,7 +762,7 @@ kv* KVStore::merge_self(kv* mem,uint64_t len)
     uint64_t index = 0;
 
     for(;index < len;++index){
-        if(mem[index].value == "~DELETED~"){
+        if(mem[index].value == "~DELETED~" && is_last){
             continue;
         }
         if(count == 0){
@@ -910,489 +934,6 @@ kv* KVStore::merger_sort(kv* one,kv* two,uint64_t len_1,uint64_t len_2)
     return sorted_kv;
 }
 
-void KVStore::Merge_l_zero(kv_box *seq_kv,vector<SSTablecache *> &s,vector<SkipList*> &mem)
-{
-    //进行一个两路的归并排序
-    kv_box* a_cache = new kv_box[(2*1024*1024-10240-32)/12];//存储tiny_cache获取数据的所需要的信息
-    int ca_count = 0;//统计当前的a_cache所指的位置
-
-    uint64_t seq_index = 0;//指向seq_kv的下标
-    uint64_t ss_index = 0;//指向SSTable的下标
-    uint64_t num = 0;//统计现在在哪个SSTable
-    uint64_t bytes = 10240 + 32;//统计现在的byte数目
-    uint64_t by_bef;//bytes的预检测变量
-
-    bool end_flag = false;
-
-    while (true)
-    {
-        /* code */
-        //先进行比较
-        if(seq_kv[seq_index].data.key < s.at(num)->get_pair(ss_index).key){
-            if(ca_count > 0){
-                if(seq_kv[seq_index].data.key == a_cache[ca_count-1].data.key){
-                    if(seq_kv[seq_index].timestamp > a_cache[ca_count-1].timestamp){
-                        by_bef = bytes - a_cache[ca_count-1].data.length + seq_kv[seq_index].data.length;
-                        if(by_bef > 2 * 1024 * 1024){
-                            //长度超标了
-                            //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                            //			   2，把a_cache恢复到初始状态
-                            //			   3，调整ca_count
-                            bytes = bytes - a_cache[ca_count-1].data.length;
-                            a_cache[ca_count-1].index = -1;
-                            ca_count -= 1;
-                            fill_mem(a_cache,ca_count,mem);
-                            ca_count = 0;
-                            a_cache[ca_count] = seq_kv[seq_index];
-                            bytes = 10240 + 32 + seq_kv[seq_index].data.length + KEY_LENGTH + OFFSET_LENGTH;
-                            ca_count++;
-                        }
-                        else{
-                            a_cache[ca_count-1] = seq_kv[seq_index];
-                            bytes = by_bef;
-                        }
-                        seq_index++;
-                    }
-                }
-                else{
-                    by_bef = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
-                    if(by_bef > 2 * 1024 * 1024){
-                            //长度超标了
-                            //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                            //			   2，把a_cache恢复到初始状态
-                            //			   3，调整ca_count
-                            fill_mem(a_cache,ca_count,mem);
-                            ca_count = 0;
-                            a_cache[ca_count] = seq_kv[seq_index];
-                            bytes = 10240 + 32 + seq_kv[seq_index].data.length + KEY_LENGTH + OFFSET_LENGTH;
-                    }
-                    else{
-                        a_cache[ca_count] = seq_kv[seq_index];
-                        bytes = by_bef;
-                    }
-
-                    ca_count++;
-                    seq_index++;
-                }
-            }
-            else{
-                //只要输入的数据不会很长，应该不会第一次就超了把，先放着，后面再改
-                a_cache[ca_count] = seq_kv[seq_index];
-                bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
-                ca_count++;
-
-                seq_index++;
-            }
-        }
-        else if(seq_kv[seq_index].data.key > s.at(num)->get_pair(ss_index).key){
-            if(ca_count > 0){
-                if(s.at(num)->get_pair(ss_index).key == a_cache[ca_count-1].data.key){
-                    if(s.at(num)->getTime() > a_cache[ca_count-1].timestamp){
-                        by_bef = bytes - a_cache[ca_count-1].data.length + s.at(num)->get_pair(ss_index).length;
-                        if(by_bef > 2 * 1024 * 1024){
-                            //长度超标了
-                            //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                            //			   2，把a_cache恢复到初始状态
-                            //			   3，调整ca_count
-                            bytes = bytes - a_cache[ca_count-1].data.length;
-                            a_cache[ca_count-1].index = -1;
-                            ca_count -= 1;
-                            fill_mem(a_cache,ca_count,mem);
-                            ca_count = 0;
-                            a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
-                            a_cache[ca_count].index = s.at(num)->getindex();
-                            a_cache[ca_count].level = s.at(num)->getlevel();
-                            a_cache[ca_count].timestamp = s.at(num)->getTime();
-                            bytes = 10240 + 32 + s.at(num)->get_pair(ss_index).length + KEY_LENGTH + OFFSET_LENGTH;
-                            ca_count++;
-                        }
-                        else{
-                            a_cache[ca_count-1].data = s.at(num)->get_pair(ss_index);
-                            a_cache[ca_count-1].index = s.at(num)->getindex();
-                            a_cache[ca_count-1].level = s.at(num)->getlevel();
-                            a_cache[ca_count-1].timestamp = s.at(num)->getTime();
-
-                            bytes = by_bef;
-                            ca_count++;
-                        }
-
-                        ss_index++;
-                    }
-                }
-                else{
-                    by_bef = bytes + KEY_LENGTH + OFFSET_LENGTH + s.at(num)->get_pair(ss_index).length;
-                    if(by_bef > 2 * 1024 * 1024){
-                        //长度超标了
-                        //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                        //			   2，把a_cache恢复到初始状态
-                        //			   3，调整ca_count
-                        fill_mem(a_cache,ca_count,mem);
-                        ca_count = 0;
-                        a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
-                        a_cache[ca_count].index = s.at(num)->getindex();
-                        a_cache[ca_count].level = s.at(num)->getlevel();
-                        a_cache[ca_count].timestamp = s.at(num)->getTime();
-                        bytes = 10240 + 32 + s.at(num)->get_pair(ss_index).length + KEY_LENGTH + OFFSET_LENGTH;
-                        ca_count++;
-                    }
-                    else{
-                        a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
-                        a_cache[ca_count].index = s.at(num)->getindex();
-                        a_cache[ca_count].level = s.at(num)->getlevel();
-                        a_cache[ca_count].timestamp = s.at(num)->getTime();
-                        ca_count++;
-                        bytes = by_bef;
-                    }
-
-                    ss_index++;
-                }
-            }
-            else{
-                //只要输入的数据不会很长，应该不会第一次就超了把，先放着，后面再改
-                a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
-                a_cache[ca_count].index = s.at(num)->getindex();
-                a_cache[ca_count].level = s.at(num)->getlevel();
-                a_cache[ca_count].timestamp = s.at(num)->getTime();
-                bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
-                ca_count++;
-
-                ss_index++;
-            }
-        }
-        else{
-            //相等的情况
-            //先比较时间戳
-            if(seq_kv[seq_index].timestamp > s.at(num)->getTime()){
-                if(ca_count > 0){
-                    if(seq_kv[seq_index].data.key == a_cache[ca_count-1].data.key){
-                        if(seq_kv[seq_index].timestamp > a_cache[ca_count-1].timestamp){
-                            by_bef = bytes - a_cache[ca_count-1].data.length + seq_kv[seq_index].data.length;
-                            if(by_bef > 2 * 1024 *1024){
-                                //长度超标了
-                                //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                                //			   2，把a_cache恢复到初始状态
-                                //			   3，调整ca_count
-                                bytes = bytes - a_cache[ca_count-1].data.length;
-                                a_cache[ca_count-1].index = -1;
-                                ca_count -= 1;
-                                fill_mem(a_cache,ca_count,mem);
-                                ca_count = 0;
-                                a_cache[ca_count] = seq_kv[seq_index];
-                                bytes = 10240 + 32 + seq_kv[seq_index].data.length + KEY_LENGTH + OFFSET_LENGTH;
-                                ca_count++;
-                            }
-                            else{
-                                a_cache[ca_count-1] = seq_kv[seq_index];
-                                bytes = by_bef;
-                            }
-                        }
-                    }
-                    else{
-                        by_bef = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
-                        if(by_bef > 2 * 1024 * 1024){
-                            //长度超标了
-                            //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                            //			   2，把a_cache恢复到初始状态
-                            //			   3，调整ca_count
-                            fill_mem(a_cache,ca_count,mem);
-                            ca_count = 0;
-                            a_cache[ca_count] = seq_kv[seq_index];
-                            bytes = 10240 + 32 + KEY_LENGTH + OFFSET_LENGTH + seq_kv[seq_index].data.length;
-                        }
-                        else{
-                            a_cache[ca_count] = seq_kv[seq_index];
-                            bytes = by_bef;
-                        }
-                        ca_count++;
-                    }
-                }
-                else{
-                    //只要输入的数据不会很长，应该不会第一次就超了把，先放着，后面再改
-                    a_cache[ca_count] = seq_kv[seq_index];
-                    bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
-                    ca_count++;
-                }
-                seq_index++;
-                ss_index++;
-            }
-            else{
-                if(ca_count > 0){
-                    if(s.at(num)->get_pair(ss_index).key == a_cache[ca_count-1].data.key){
-                        if(s.at(num)->getTime() > a_cache[ca_count-1].timestamp){
-                            by_bef = bytes - a_cache[ca_count-1].data.length + s.at(num)->get_pair(ss_index).length;
-                            if(by_bef > 2 * 1024 * 1024){
-                                //长度超标了
-                                //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                                //			   2，把a_cache恢复到初始状态
-                                //			   3，调整ca_count
-                                bytes = bytes - a_cache[ca_count-1].data.length;
-                                a_cache[ca_count-1].index = -1;
-                                ca_count -= 1;
-                                fill_mem(a_cache,ca_count,mem);
-                                ca_count = 0;
-                                a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
-                                a_cache[ca_count].index = s.at(num)->getindex();
-                                a_cache[ca_count].level = s.at(num)->getlevel();
-                                a_cache[ca_count].timestamp = s.at(num)->getTime();
-                                bytes = 10240 + 32 + s.at(num)->get_pair(ss_index).length + KEY_LENGTH + OFFSET_LENGTH;
-                                ca_count++;
-                            }
-                            else{
-                                a_cache[ca_count-1].data = s.at(num)->get_pair(ss_index);
-                                a_cache[ca_count-1].index = s.at(num)->getindex();
-                                a_cache[ca_count-1].level = s.at(num)->getlevel();
-                                a_cache[ca_count-1].timestamp = s.at(num)->getTime();
-
-                                bytes = by_bef;
-                            }
-                            ss_index++;
-                        }
-                    }
-                    else{
-                        by_bef = bytes + KEY_LENGTH + OFFSET_LENGTH + s.at(num)->get_pair(ss_index).length;
-                        if(by_bef > 2 * 1024 * 1024){
-                            //长度超标了
-                            //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                            //			   2，把a_cache恢复到初始状态
-                            //			   3，调整ca_count
-                            fill_mem(a_cache,ca_count,mem);
-                            ca_count = 0;
-                            a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
-                            a_cache[ca_count].index = s.at(num)->getindex();
-                            a_cache[ca_count].level = s.at(num)->getlevel();
-                            a_cache[ca_count].timestamp = s.at(num)->getTime();
-                            bytes = 10240 + 32 + s.at(num)->get_pair(ss_index).length + KEY_LENGTH + OFFSET_LENGTH;
-                            ca_count++;
-                        }
-                        else{
-                            a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
-                            a_cache[ca_count].index = s.at(num)->getindex();
-                            a_cache[ca_count].level = s.at(num)->getlevel();
-                            a_cache[ca_count].timestamp = s.at(num)->getTime();
-                            ca_count++;
-                            bytes = by_bef;
-                        }
-
-                        ss_index++;
-                    }
-                }
-                else{
-                    //只要输入的数据不会很长，应该不会第一次就超了把，先放着，后面再改
-                    a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
-                    a_cache[ca_count].index = s.at(num)->getindex();
-                    a_cache[ca_count].level = s.at(num)->getlevel();
-                    a_cache[ca_count].timestamp = s.at(num)->getTime();
-                    bytes = bytes + KEY_LENGTH + OFFSET_LENGTH + a_cache[ca_count].data.length;
-                    ca_count++;
-
-                    ss_index++;
-                }
-                seq_index++;
-            }
-        }
-
-        //要进行边界的检测
-        if(ss_index == s.at(num)->getkey_Count()){
-            num++;
-            ss_index = 0;
-            if(num >= s.size()){
-                end_flag = true;
-                break;
-            }
-        }
-        if(seq_kv[seq_index].index == -1){
-            break;
-        }
-    }
-
-    //根据end_flag的值进行不同的操作
-    if(end_flag){
-        //SSTable被遍历完的情况
-        //第一步，先把值赋值到a_cache中（采用循环的方式）
-        //第二步，如果超过了数量上限就放到vector中
-        while(true){
-            //根据键值是否重复可以分成两种情况
-            if(a_cache[ca_count-1].data.key == seq_kv[seq_index].data.key){
-                //大致思路：先判断时间戳，再判断bytes是否会超标，根据结果进行不同的操作
-                if(a_cache[ca_count-1].timestamp < seq_kv[seq_index].timestamp){
-                    by_bef = bytes + seq_kv[seq_index].data.length - a_cache[ca_count-1].data.length;
-                    if(by_bef > 2 * 1024 * 1024){
-                        //长度超标了
-                        //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                        //			   2，把a_cache恢复到初始状态
-                        //			   3，调整ca_count
-                        bytes = bytes - a_cache[ca_count-1].data.length;
-                        a_cache[ca_count-1].index = -1;
-                        ca_count -= 1;
-                        fill_mem(a_cache,ca_count,mem);
-                        ca_count = 0;
-                        a_cache[ca_count] = seq_kv[seq_index];
-                        bytes = 10240 + 32 + seq_kv[seq_index].data.length + KEY_LENGTH + OFFSET_LENGTH;
-                        ca_count++;
-                    }
-                    else{
-                        a_cache[ca_count-1] = seq_kv[seq_index];
-                        bytes = by_bef;
-                    }
-                    seq_index++;
-                }
-            }
-            else{
-                by_bef = bytes + seq_kv[seq_index].data.length + KEY_LENGTH + OFFSET_LENGTH;
-                if(by_bef > (2 * 1024 * 1024)){
-                    //长度超标了
-                    //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                    //			   2，把a_cache恢复到初始状态
-                    //			   3，调整ca_count
-                    fill_mem(a_cache,ca_count,mem);
-                    ca_count = 0;
-                    a_cache[ca_count] = seq_kv[seq_index];
-                    bytes = 10240 + 32 + seq_kv[seq_index].data.length + KEY_LENGTH + OFFSET_LENGTH;
-                }
-                else{
-                    a_cache[ca_count] = seq_kv[seq_index];
-                    bytes = by_bef;
-                }
-                ca_count++;
-                seq_index++;
-            }
-
-            //进行检测
-            if(seq_kv[seq_index].index == -1){
-                fill_mem(a_cache,ca_count,mem);
-                break;
-            }
-        }
-
-    }
-    else{
-        //seq_kv被遍历完的情况
-        //第一步，先把值赋值到a_cache中（采用循环的方式）
-        //第二步，如果超过了数量上限就放到vector中
-        while(true){
-            if(s.at(num)->get_pair(ss_index).key == a_cache[ca_count-1].data.key){
-                    if(s.at(num)->getTime() > a_cache[ca_count-1].timestamp){
-                        by_bef = bytes - a_cache[ca_count-1].data.length + s.at(num)->get_pair(ss_index).length;
-                        if(by_bef > 2 * 1024 * 1024){
-                            //长度超标了
-                            //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                            //			   2，把a_cache恢复到初始状态
-                            //			   3，调整ca_count
-                            bytes = bytes - a_cache[ca_count-1].data.length;
-                            a_cache[ca_count-1].index = -1;
-                            ca_count -= 1;
-                            fill_mem(a_cache,ca_count,mem);
-                            ca_count = 0;
-                            a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
-                            a_cache[ca_count].index = s.at(num)->getindex();
-                            a_cache[ca_count].level = s.at(num)->getlevel();
-                            a_cache[ca_count].timestamp = s.at(num)->getTime();
-                            bytes = 10240 + 32 + s.at(num)->get_pair(ss_index).length + KEY_LENGTH + OFFSET_LENGTH;
-                            ca_count++;
-                        }
-                        else{
-                            a_cache[ca_count-1].data = s.at(num)->get_pair(ss_index);
-                            a_cache[ca_count-1].index = s.at(num)->getindex();
-                            a_cache[ca_count-1].level = s.at(num)->getlevel();
-                            a_cache[ca_count-1].timestamp = s.at(num)->getTime();
-
-                            bytes = by_bef;
-                            ca_count++;
-                        }
-
-                        ss_index++;
-                    }
-            }
-            else{
-                    by_bef = bytes + KEY_LENGTH + OFFSET_LENGTH + s.at(num)->get_pair(ss_index).length;
-                    if(by_bef > 2 * 1024 * 1024){
-                        //长度超标了
-                        //需要做的事情：1，调整bytes，并且把最后一个元素删掉（因为timestamp太小）
-                        //			   2，把a_cache恢复到初始状态
-                        //			   3，调整ca_count
-                        fill_mem(a_cache,ca_count,mem);
-                        ca_count = 0;
-                        a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
-                        a_cache[ca_count].index = s.at(num)->getindex();
-                        a_cache[ca_count].level = s.at(num)->getlevel();
-                        a_cache[ca_count].timestamp = s.at(num)->getTime();
-                        bytes = 10240 + 32 + s.at(num)->get_pair(ss_index).length + KEY_LENGTH + OFFSET_LENGTH;
-                        ca_count++;
-                    }
-                    else{
-                        a_cache[ca_count].data = s.at(num)->get_pair(ss_index);
-                        a_cache[ca_count].index = s.at(num)->getindex();
-                        a_cache[ca_count].level = s.at(num)->getlevel();
-                        a_cache[ca_count].timestamp = s.at(num)->getTime();
-                        ca_count++;
-                        bytes = by_bef;
-                    }
-
-                    ss_index++;
-                }
-
-            //进行检测
-            if(ss_index == s.at(num)->getkey_Count()){
-                num++;
-                if(num == s.size()){
-                    fill_mem(a_cache,ca_count,mem);
-                    break;
-                }
-            }
-        }
-    }
-}
-
-//给出一个结构体数组，根据这个结构体数组从不同的文件中读东西到内存中（SkipList中）
-void KVStore::fill_mem(kv_box* gen,uint64_t count,vector<SkipList *> &mem)
-{
-    //用于定位文件中的字串
-    int in_offset;
-    uint64_t in_key;
-    int in_length;
-
-    //用于定位对应文件的位置
-    int in_timestamp;
-    int in_index;
-    int in_level;
-
-    SkipList* in_mem = new SkipList();
-    for(unsigned int i = 0;i < count;++i){
-        string dir = this->getDir();
-        in_level = gen[i].level;
-        in_index = gen[i].index;
-        in_timestamp = gen[i].timestamp;
-
-        in_offset = gen[i].data.offset;
-        in_key = gen[i].data.key;
-        in_length = gen[i].data.length;
-
-        string fileroad = fname_gen(in_level,in_timestamp,in_index);
-        string file_path = dir + fileroad;
-
-        ifstream read_file(file_path,ios::in|ios::binary);
-        read_file.seekg(in_offset,ios::beg);
-        if(read_file.eof()){
-            cout << "wrong!" << endl;
-        }
-        char *buffer = new char[in_length + 1];
-        read_file.read(buffer,in_length);
-        buffer[in_length] = '\0';
-        string ans = buffer;
-        delete [] buffer;
-
-        in_mem->Insert(in_key,ans);
-
-        //对这个数组的元素进行清空
-        gen[i].index = -1;
-        gen[i].level = -1;
-        gen[i].timestamp = -1;
-
-    }
-
-    mem.push_back(in_mem);
-}
-
 //先使用稳定的冒泡排序，后面可以再优化
 void sort_vec(vector<SSTablecache *> &s){
     SSTablecache* compare;
@@ -1453,14 +994,14 @@ void KVStore::w_file(SSTablecache* myCache)
         string dir = this->getDir();
 
         int index = myCache->getindex();
-        string fileroad = fname_gen(myCache->getlevel(),myCache->getTime(),myCache->getindex());
+        string fileroad = fname_gen(myCache->getlevel(),myCache->getTime(),index);
 
         string file_path = dir + fileroad;
         ofstream data_file(file_path,ios::out | ios::binary);
 
         int offset = 32 + 10*1024 + key_count * 12;//the offset of the first element
-        unsigned min = myCache->getkey_min();
-        unsigned max = myCache->getkey_max();
+        unsigned long long min = myCache->getkey_min();
+        unsigned long long max = myCache->getkey_max();
 
         //进行文件的写入
         //写入时间戳
@@ -1492,11 +1033,23 @@ void KVStore::w_file(SSTablecache* myCache)
         }
 
         //write value
+        string write_in = "";
         for(unsigned int i = 0;i < key_count;++i){
-            data_file.write(q->val.c_str(),q->val.length());
+            //data_file.write(q->val.c_str(),q->val.length());
+            write_in = write_in + q->val.c_str();
+            if(q->key > max){
+                cout << "key_count " << key_count << endl;
+                cout << "indeed " << i << endl;
+                cout << q->key;
+            }
+            if(i == key_count - 10){
+                int a = 0;
+            }
             //这相当与这条指令的二进制写入data_file << q->val;
             q = q->forwards[0];
         }
+
+        data_file.write(write_in.c_str(),write_in.length());
 
         data_file.close();
 }
@@ -1529,9 +1082,6 @@ std::string KVStore::get(uint64_t key)
         //level-0
         if(level == 0){
             return "";
-        }
-        if(key > 65468){
-            int a = 0;
         }
         Level *zero_do = this->all_level.at(0);
         uint64_t time = 0;
@@ -1640,9 +1190,9 @@ void KVStore::reset()
     //把所有的目录清空
     this->Memtable.cleanMem();
     //删除对应的目录
-    for(int i = 0;i < this->all_level.size();++i){
+    for(unsigned int i = 0;i < this->all_level.size();++i){
         //对应一个目录
-        for(int j = 0;j < this->all_level.at(i)->getCount();++j){
+        for(unsigned int j = 0;j < this->all_level.at(i)->getCount();++j){
             string dir = this->getDir();
             string file_path = dir + fname_gen(i,this->all_level.at(i)->find_cache(j)->getTime(),
             this->all_level.at(i)->find_cache(j)->getindex());
@@ -1650,7 +1200,11 @@ void KVStore::reset()
             if(result){
                 cout << "rmfile fail" << endl;
             }
+            else{
+                delete this->all_level.at(i)->find_cache(j);
+            }
         }
+        delete this->all_level.at(i);
 
         string dir = this->getDir();
         string dir_name = dir + "/level-" + std::to_string(i);
@@ -1659,6 +1213,12 @@ void KVStore::reset()
             cout << "rmdir fail" << endl;
         }
     }
+
+    this->level = 0;
+    this->resetBloom();
+    this->key_count = 0;
+    this->timeStamp = 0;
+    this->all_level.clear();
 }
 
 /**
