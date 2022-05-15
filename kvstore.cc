@@ -41,6 +41,12 @@ uint64_t get_level_num(vector<string> &f,int count){
 
 KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
 {
+    //初始化测试时间
+    std::chrono::steady_clock::time_point time = std::chrono::steady_clock::now();
+    this->Put_time = std::chrono::duration_cast<std::chrono::duration<double>>(time-time);
+    this->Get_time = std::chrono::duration_cast<std::chrono::duration<double>>(time-time);
+    this->Del_time = std::chrono::duration_cast<std::chrono::duration<double>>(time-time);
+
     //初始发现对应的数据目录下面没有数据文件时的处理方式
     string copy = dir;
     this->timeStamp = 1;
@@ -209,6 +215,9 @@ KVStore::~KVStore()
  */
 void KVStore::put(uint64_t key, const string &s)
 {
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+
+
     unsigned long long lengthbefore = this->Memtable.getBytes();
     unsigned long long length = lengthbefore + KEY_LENGTH + OFFSET_LENGTH + s.length();
     string myString = this->Memtable.Search(key);
@@ -294,6 +303,11 @@ void KVStore::put(uint64_t key, const string &s)
             Bloom[field] = tmp;
         }
     }
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    this->Put_time += end - start;
+
     return;
 }
 
@@ -1126,11 +1140,19 @@ void KVStore::resetBloom()
  */
 std::string KVStore::get(uint64_t key)
 {
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+
     string val = this->Memtable.Search(key);
     if(val != ""){
             if(val == "~DELETED~"){
+                std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+                this->Put_time += end - start;
                 return "";
             }
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+            this->Put_time += end - start;
             return val;
         }
     else{
@@ -1138,6 +1160,9 @@ std::string KVStore::get(uint64_t key)
         //level-n采用区间识别的方式
         //level-0
         if(level == 0){
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+            this->Put_time += end - start;
             return "";
         }
         Level *zero_do = this->all_level.at(0);
@@ -1169,8 +1194,14 @@ std::string KVStore::get(uint64_t key)
         }
         if(time > 0){
             if(ans == "~DELETED~"){
+                std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+                this->Put_time += end - start;
                 return "";
             }
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+            this->Put_time += end - start;
             return ans;
         }
 
@@ -1201,14 +1232,23 @@ std::string KVStore::get(uint64_t key)
                         delete [] buffer;
                         read_file.close();
                         if(ans == "~DELETED~"){
+                            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+                            this->Put_time += end - start;
                             return "";
                         }
+                        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+                        this->Put_time += end - start;
                         return ans;
                     }
                 }
             }
         }
 
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+        this->Put_time += end - start;
         return "";
     }
 }
@@ -1218,23 +1258,38 @@ std::string KVStore::get(uint64_t key)
  */
 bool KVStore::del(uint64_t key)
 {
+
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+
     string val = this->get(key);
     //先判断字符串存不存在
     if(val == ""){
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+        this->Put_time += end - start;
         //不存在则return false
         return false;
     }
     if(val == "~DELETED~"){
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+        this->Put_time += end - start;
         return false;
     }
 
     bool jug = this->Memtable.Delete(key);//返回true代表跳表中有并且已经插入，若为false则代表跳表中没有需要手动put
     if(jug){
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+        this->Put_time += end - start;
         return true;
     }
     else{
         this->put(key,"~DELETED~");
     }
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    this->Put_time += end - start;
     return true;
 }
 
