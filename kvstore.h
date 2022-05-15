@@ -14,7 +14,7 @@ private:
 	std::string rootDir;//存储多级存储的根目录
 	unsigned long long timeStamp;//记录SSTable的时间戳
 	unsigned long long key_count;//记录写入SStable的键的数量
-	bool* Bloom;//写入SSTable的Bloom过滤器
+	uint8_t* Bloom;//写入SSTable的Bloom过滤器
 	//std::vector<SSTablecache*> acache;//缓存sstable中的内容
 	std::vector<Level*> all_level; //存储各级的level的缓存
 	int level;//用来表示目录的嵌套的级数

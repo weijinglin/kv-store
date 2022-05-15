@@ -74,7 +74,7 @@ private:
     unsigned long long key_min;
     unsigned long long key_max;
     int length;//the length of the SSTable
-    bool *Bloom;
+    uint8_t *Bloom;
 
     vector<kv_pair> kv_array;
 
@@ -86,7 +86,7 @@ public:
     //复制构造函数，用于解决vector的push_back的问题
     SSTablecache(const SSTablecache& a);
     //进行除了offset以外所有元素的构造
-    SSTablecache(unsigned long long time,unsigned long long count,unsigned long long min,unsigned long long max,SKNode* p,bool *filter,int offset);
+    SSTablecache(unsigned long long time,unsigned long long count,unsigned long long min,unsigned long long max,SKNode* p,uint8_t *filter,int offset);
     ~SSTablecache();
     //判断元素是否在对应的SSTable中
     bool Search(unsigned long long &key,int* message);
@@ -101,7 +101,7 @@ public:
 
     unsigned long long getkey_Count();
 
-    bool* get_bloom();
+    uint8_t* get_bloom();
 
     int getindex();
 

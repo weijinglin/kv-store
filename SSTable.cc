@@ -6,7 +6,7 @@ using namespace std;
 
 SSTablecache::SSTablecache(/* args */)
 {
-    this->Bloom = new bool[10240];
+    this->Bloom = new uint8_t[10240];
     this->timeStamp = 1;
     this->key_count = 0;
     this->key_max = 0;
@@ -22,7 +22,7 @@ SSTablecache::SSTablecache(const SSTablecache& a)
     key_max = a.key_max;
     key_min = a.key_min;
     length = a.length;
-    this->Bloom = new bool[10240];
+    this->Bloom = new uint8_t[10240];
     memcpy(Bloom,a.Bloom,10240);
 
     //this->kv_array.resize(key_count);
@@ -34,9 +34,9 @@ SSTablecache::SSTablecache(const SSTablecache& a)
 }
 
 SSTablecache::SSTablecache(unsigned long long time,unsigned long long count,unsigned long long min,
-unsigned long long max,SKNode* p,bool *filter,int offset):timeStamp(time),key_count(count),key_min(min),key_max(max)
+unsigned long long max,SKNode* p,uint8_t *filter,int offset):timeStamp(time),key_count(count),key_min(min),key_max(max)
 {
-    this->Bloom = new bool[10240];
+    this->Bloom = new uint8_t[10240];
     memcpy(Bloom,filter,10240);
 
     SKNode* NIL = new SKNode(INT_MAX, "", SKNodeType::NIL);
@@ -67,7 +67,19 @@ bool SSTablecache::Search(unsigned long long &key,int* message)
     // }
 
     MurmurHash3_x64_128(&key,sizeof(key),1,hash);
-    if(Bloom[hash[0]%10240] && Bloom[hash[1]%10240] && Bloom[hash[2]%10240] && Bloom[hash[3]%10240]){
+    //判断思路：通过组装一个uint_8,然后判断是不是每一位都是1
+    uint8_t is_exist = 0;
+    for(int i = 0;i < 4;++i){
+        unsigned int pos = (hash[i] % (10240 * 8));
+        unsigned int field = pos / 8;
+        unsigned int exact_pos = pos % 8;
+
+        uint8_t tmp = Bloom[field];
+        tmp = (tmp >> exact_pos) & 1;
+        is_exist = is_exist | (tmp << i);
+    }
+    //if(Bloom[hash[0]%10240] && Bloom[hash[1]%10240] && Bloom[hash[2]%10240] && Bloom[hash[3]%10240]){
+    if(is_exist == 15){
         // auto first = std::lower_bound(this->key_array.begin(), this->key_array.end(), key);
         // if(!(first == this->key_array.end()) && (*first == key)){
         //     int distance = first - this->key_array.begin();
@@ -200,7 +212,7 @@ kv_pair SSTablecache::get_pair(uint64_t index)
     return this->kv_array.at(index);
 }
 
-bool* SSTablecache::get_bloom()
+uint8_t* SSTablecache::get_bloom()
 {
     return this->Bloom;
 }

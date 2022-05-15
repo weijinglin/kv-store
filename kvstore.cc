@@ -11,7 +11,7 @@ uint64_t get_minkey(vector<SSTablecache*> &s);
 
 uint64_t get_maxkey(vector<SSTablecache*> &s);
 
-bool* gen_bloom(SkipList* in_mem);
+uint8_t* gen_bloom(SkipList* in_mem);
 
 bool isCover(uint64_t k_min,uint64_t k_max,uint64_t ck_min,uint64_t ck_max);
 
@@ -46,7 +46,7 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
     this->timeStamp = 1;
     this->key_count = 0;
     this->level = 0;
-    this->Bloom = new bool[10*1024];
+    this->Bloom = new uint8_t[10*1024];
     if(!(utils::dirExists(copy))){
         return;
     }
@@ -107,7 +107,7 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
 
 
                 //读取布隆过滤器
-                bool *filter = new bool[10240];
+                uint8_t *filter = new uint8_t[10240];
 
                 read_file.read((char*)filter,10240);
 
@@ -260,7 +260,15 @@ void KVStore::put(uint64_t key, const string &s)
         unsigned long long myKey = key;
         MurmurHash3_x64_128(&myKey,sizeof(myKey), 1, hash);
         for(int i = 0;i < 4;++i){
-            Bloom[hash[i] % 10240] = true;
+            //Bloom[hash[i] % 10240] = true;
+            //充分利用bit数
+            unsigned int pos = (hash[i] % (10240 * 8));
+            unsigned int field = pos / 8;
+            unsigned int exact_pos = pos % 8;
+
+            uint8_t tmp = Bloom[field];
+            tmp = tmp | (1 << exact_pos);
+            Bloom[field] = tmp;
         }
     }
     else{
@@ -270,14 +278,21 @@ void KVStore::put(uint64_t key, const string &s)
         unsigned long long myKey = key;
         MurmurHash3_x64_128(&myKey,sizeof(myKey), 1, hash);
         for(int i = 0;i < 4;++i){
-            Bloom[hash[i] % 10240] = true;
+            //Bloom[hash[i] % 10240] = true;
+            //充分利用bit数
+            unsigned int pos = (hash[i] % (10240 * 8));
+            unsigned int field = pos / 8;
+            unsigned int exact_pos = pos % 8;
+            uint8_t tmp = Bloom[field];
+            tmp = tmp | (1 << exact_pos);
+            Bloom[field] = tmp;
         }
     }
     return;
 }
 
-bool* gen_bloom(SkipList* in_mem){
-    bool* Bloom_out = new bool[10240];
+uint8_t* gen_bloom(SkipList* in_mem){
+    uint8_t* Bloom_out = new uint8_t[10240];
     unsigned int hash[4] = {0};
     unsigned long long myKey;
 
@@ -290,7 +305,15 @@ bool* gen_bloom(SkipList* in_mem){
         myKey = p->key;
         MurmurHash3_x64_128(&myKey,sizeof(myKey), 1, hash);
         for(int i = 0;i < 4;++i){
-            Bloom_out[hash[i] % 10240] = true;
+            //Bloom_out[hash[i] % 10240] = true;
+            //Bloom[hash[i] % 10240] = true;
+            //充分利用bit数
+            unsigned int pos = (hash[i] % (10240 * 8));
+            unsigned int field = pos / 8;
+            unsigned int exact_pos = pos % 8;
+            uint8_t tmp = Bloom_out[field];
+            tmp = tmp | (1 << exact_pos);
+            Bloom_out[field] = tmp;
         }
         p = p->forwards[0];
     }
@@ -305,7 +328,7 @@ void KVStore::gen_table_kv(kv* mem,uint64_t len,vector<SSTablecache*> &s_list,ve
     uint64_t by_bef = bytes;
 
     SSTablecache* in_table;
-    bool* in_Bloom;
+    uint8_t* in_Bloom;
     uint64_t in_count;
     uint64_t time = this->timeStamp;
 
