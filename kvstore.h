@@ -5,7 +5,7 @@
 #include "SSTable.h"
 #include "level.h"
 #include <vector>
-
+#include <chrono>
 
 class KVStore : public KVStoreAPI {
 	// You can add your implementation here
@@ -18,6 +18,8 @@ private:
 	//std::vector<SSTablecache*> acache;//缓存sstable中的内容
 	std::vector<Level*> all_level; //存储各级的level的缓存
 	int level;//用来表示目录的嵌套的级数
+
+	std::chrono::duration<double> Put_time,Get_time,Del_time;//分别用来记录插入，搜索和删除
 
 public:
 	KVStore(const std::string &dir);
