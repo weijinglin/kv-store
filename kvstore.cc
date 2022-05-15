@@ -143,15 +143,21 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir),rootDir(dir)
                     //对于最后一段的读写
                     int length = all_read - off_arr[key_num-1] + off_arr[0];
 
-                    read_in = new char[length+1];
-                    memcpy(read_in,buf+read_pos,length);
-                    read_in[length] = '\0';
-                    string in_string = read_in;
-                    in_mem.Insert(keys_arr[key_num-1],in_string);
-                    delete [] read_in;
-                    new_table = new SSTablecache(time,key_num,key_min,key_max,in_mem.getMinEle(),gen_bloom(&in_mem),off_arr[0]);
-                    this->all_level.at(counter)->set_ele(new_table,index);
+                    if(length < 0){
+                        new_table = new SSTablecache(time,key_num,key_min,key_max,in_mem.getMinEle(),gen_bloom(&in_mem),off_arr[0]);
+                        this->all_level.at(counter)->set_ele(new_table,index);
+                    }
+                    else{
+                        read_in = new char[length+1];
+                        memcpy(read_in,buf+read_pos,length);
+                        read_in[length] = '\0';
+                        string in_string = read_in;
+                        in_mem.Insert(keys_arr[key_num-1],in_string);
+                        delete [] read_in;
+                        new_table = new SSTablecache(time,key_num,key_min,key_max,in_mem.getMinEle(),gen_bloom(&in_mem),off_arr[0]);
+                        this->all_level.at(counter)->set_ele(new_table,index);
 
+                    }
                 }
                 delete [] buf;
             }
@@ -174,7 +180,7 @@ KVStore::~KVStore()
 {
     this->key_count = this->Memtable.getKetcount();
     SSTablecache *myCache = new SSTablecache(this->timeStamp,this->key_count,this->Memtable.getMinkey(),
-    this->Memtable.getMaxkey(),this->Memtable.getMinEle(),this->Bloom,10240+32 + 12*this->key_count);
+    this->Memtable.getMaxkey(),this->Memtable.getMinEle(),this->Bloom,10240 + 32 + 12 * this->key_count);
     myCache->setlevel(0);
 
     if(level == 0){
@@ -305,8 +311,6 @@ uint8_t* gen_bloom(SkipList* in_mem){
         myKey = p->key;
         MurmurHash3_x64_128(&myKey,sizeof(myKey), 1, hash);
         for(int i = 0;i < 4;++i){
-            //Bloom_out[hash[i] % 10240] = true;
-            //Bloom[hash[i] % 10240] = true;
             //充分利用bit数
             unsigned int pos = (hash[i] % (10240 * 8));
             unsigned int field = pos / 8;
@@ -448,9 +452,6 @@ kv* KVStore::read_sorted_kv(vector<SSTablecache*> &mem)
 void KVStore::do_Compac()
 {
     //首先进行判定
-//    if(this->timeStamp >= 257){
-//        cout << this->all_level.at(2)->getCount() << endl;
-//    }
     if(this->all_level.at(0)->getCount() >= 3){
         //触发compaction
         int check_level = 1;//used to check for all the level compaction condition
@@ -1011,7 +1012,6 @@ void sort_vec(vector<SSTablecache *> &s){
         }
     }
     return;
-
 }
 
 uint64_t get_minkey(vector<SSTablecache*> &s)
@@ -1136,7 +1136,6 @@ std::string KVStore::get(uint64_t key)
     else{
         //level-0采用遍历的方式
         //level-n采用区间识别的方式
-        //cout << key << endl;
         //level-0
         if(level == 0){
             return "";
@@ -1268,7 +1267,7 @@ void KVStore::reset()
         string dir_name = dir + "/level-" + std::to_string(i);
         int result = utils::rmdir(dir_name.c_str());
         if(result){
-            cout << "rmdir fail" << endl;
+            //cout << "rmdir fail" << endl;
         }
     }
 
