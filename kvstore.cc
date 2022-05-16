@@ -374,6 +374,8 @@ void KVStore::gen_table_kv(kv* mem,uint64_t len,vector<SSTablecache*> &s_list,ve
             bytes = 10240 + 32 + KEY_LENGTH + OFFSET_LENGTH + mem[i].value.length();
 
             in_mem->Insert(mem[i].key,mem[i].value);
+
+            delete [] in_Bloom;
         }
         else{
             bytes = by_bef;
@@ -388,6 +390,8 @@ void KVStore::gen_table_kv(kv* mem,uint64_t len,vector<SSTablecache*> &s_list,ve
 
         s_list.push_back(in_table);
         skip.push_back(in_mem);
+
+        delete [] in_Bloom;
     }
 
 }
@@ -1547,4 +1551,18 @@ void KVStore::scan(uint64_t key1, uint64_t key2, list<pair<uint64_t, string> > &
     }
 
     mem.ScanSearch(key1,key2,list);
+}
+
+
+//下面是测试函数的具体实现
+void KVStore::report()
+{
+    ofstream test_report("test-report",ios::app);
+    //测试数据写入的位置
+
+    test_report << "test data:" << endl;
+    test_report << "Put cost : " << this->Put_time.count() << endl;
+    test_report << "Get cost : " << this->Get_time.count() << endl;
+    test_report << "Del cost : " << this->Del_time.count() << endl;
+    test_report << endl;
 }

@@ -7,7 +7,7 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 # There is NO WARRANTY, to the extent permitted by law.
  
 
-# Make data base, printed on Mon May 16 00:32:20 2022
+# Make data base, printed on Mon May 16 14:10:38 2022
 
 # Variables
 
@@ -32,14 +32,14 @@ HOMEDRIVE = C:
 # automatic
 ^D = $(patsubst %/,%,$(patsubst %\,%,$(dir $^)))
 # makefile
-CUR 
-DIR := d:/programforVS/LSM_test/lsm-kv-normal
+CURDIR := d:/programforVS/LSM_test/lsm-kv-normal
 # default
 SHELL := sh.exe
 # environment
 WINDIR = C:\Windows
 # environment
-VSCODE_NLS_CONFIG = {"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"42e84e0914b17800d483f69e299e1b00.zh-cn","_translationsConfigFile":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\42e84e0914b17800d483f69e299e1b00.zh-cn\\tcf.json","_cacheRoot":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\42e84e0914b17800d483f69e299e1b00.zh-cn","_resolvedLanguagePackCoreLocation":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\42e84e0914b17800d483f69e299e1b00.zh-cn\\da15b6fd3ef856477bf6f4fb29ba1b7af717770d","_corruptedFile":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\42e84e0914b17800d483f69e299e1b00.zh-cn\\corrupted.info","_languagePackSupport":true}
+VSCODE_NLS_CONFIG = {"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"42e84e0914b17800d483f69e299e1b00.zh-cn","_translationsConfigFile":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\42e84e0914b17800d483f69e299e1b00.zh-cn\\tcf.json","_cacheRoot":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\42e84e0914b17800d483f69e299e1b00.zh-cn","_resolvedLanguagePackCoreLocation" 
+:"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\42e84e0914b17800d483f69e299e1b00.zh-cn\\da15b6fd3ef856477bf6f4fb29ba1b7af717770d","_corruptedFile":"C:\\Users\\86131\\AppData\\Roaming\\Code\\clp\\42e84e0914b17800d483f69e299e1b00.zh-cn\\corrupted.info","_languagePackSupport":true}
 # environment
 ONEDRIVE = C:\Users\86131\OneDrive
 # makefile (from 'Makefile', line 2)
@@ -63,9 +63,9 @@ PROGRAMW6432 = C:\Program Files
 # environment
 PROGRAMDATA = C:\ProgramData
 # environment
-VSCODE_IPC_HOOK_EXTHOST = \\.\pipe\vscode-ipc-0a221c4a-50a5-4b14-8c3d-70cc88da70eb-sock
+VSCODE_IPC_HOOK_EXTHOST = \\.\pipe\vscode-ipc-975b7893-d88f-4e3f-a017-bfec7aab9478-sock
 # environment
-VSCODE_CWD = D:\programforVS\LSM_test\lsm-kv-normal
+VSCODE_CWD = D:\VScode\Microsoft VS Code\Microsoft VS Code
 # environment
 PATH = D:\VMware\VMwarePlayer\bin\;C:\Python310\Scripts\;C:\Python310\;C:\Program Files (x86)\Common Files\Oracle\Java\javapath;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\NVIDIA Corporation\NVIDIA NvDLISR;C:\Program Files\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\;C:\Program Files\dotnet\;D:\bandzip\Bandizip\;D:\java\jre1.8.0\bin;D:\nodejs\;C:\ProgramData\chocolatey\bin;D:\Git\Git\cmd;C:\Program Files\Docker\Docker\resources\bin;C:\ProgramData\DockerDesktop\version-bin;C:\Program Files\Go\bin;D:\programforVS\goprogram;D:\maven\apache-maven-3.8.5-bin\apache-maven-3.8.5\bin;%CATALINA_HOME\lib;%CATALINA_HOME\bin;C:\Users\86131\AppData\Local\Microsoft\WindowsApps;C:\Users\86131\.dotnet\tools;D:\JetBrains\DataGrip 2021.3.4\bin;;D:\JetBrains\IntelliJ IDEA 2021.3.2\bin;;C:\Users\86131\AppData\Roaming\npm;D:\VScode\Microsoft VS Code\Microsoft VS Code\bin;D:\MinGW\bin;C:\Users\86131\go\bin
 # environment
@@ -97,7 +97,7 @@ INTELLIJ IDEA = D:\JetBrains\IntelliJ IDEA 2021.3.2\bin;
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_32208_CAOXWNACSRKZDTAX
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_23944_GCQVRZVIGBEQKOJQ
 # environment
 VSCODE_PIPE_LOGGING = true
 # environment
@@ -115,9 +115,10 @@ PUBLIC = C:\Users\Public
 # environment
 VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
-VSCODE_CODE_CACHE_PATH = C:\Users\86131\AppData\Roaming\Code\CachedData\da15b6fd3ef856477bf6f4fb29ba1b7af717770d
+VSCODE_CODE_CACHE_PATH = C:\Users\86131\AppData\Roaming\Code\CachedData\da15b6fd3ef856477bf6f4fb29ba1b7af 
+717770d
 # environment
-APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = true
+APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
 # environment
 COMMONPROGRAMFILES = C:\Program Files (x86)\Common Files
 # environment
@@ -200,8 +201,7 @@ DATAGRIP = D:\JetBrains\DataGrip 2021.3.4\bin;
 SUFFIXES := 
 # environment
 SYSTEMDRIVE = C:
-# environmen 
-t
+# environment
 SESSIONNAME = Console
 # environment
 PROCESSOR_REVISION = 8d01
@@ -214,7 +214,7 @@ PROCESSOR_LEVEL = 6
 # environment
 FPS_BROWSER_APP_PROFILE_STRING = Internet Explorer
 # environment
-VSCODE_PID = 32208
+VSCODE_PID = 23944
 # environment
 USERDOMAIN_ROAMINGPROFILE = LAPTOP-JVDN2KSE
 # variable set hash-table stats:
@@ -227,7 +227,8 @@ USERDOMAIN_ROAMINGPROFILE = LAPTOP-JVDN2KSE
 # Directories
 
 # : could not be stat'd.
-# C:\ProgramData\DockerDesktop\version-bin: could not be stat'd.
+# 
+ C:\ProgramData\DockerDesktop\version-bin: could not be stat'd.
 # D:\bandzip\Bandizip\ (key D:/bandzip/Bandizip/, mtime 1644850477): 20 files, no impossibilities.
 # C:\Users\86131\AppData\Roaming\npm (key C:/Users/86131/AppData/Roaming/npm, mtime 1647063943): 9 files, no impossibilities.
 # C:\Program Files\NVIDIA Corporation\NVIDIA NvDLISR (key C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR, mtime 1639092474): 5 files, no impossibilities.
@@ -236,10 +237,11 @@ USERDOMAIN_ROAMINGPROFILE = LAPTOP-JVDN2KSE
 # D:\VMware\VMwarePlayer\bin\ (key D:/VMware/VMwarePlayer/bin/, mtime 1647054514): 4 files, no impossibilities.
 # C:\Users\86131\AppData\Local\Microsoft\WindowsApps (key C:/Users/86131/AppData/Local/Microsoft/WindowsApps, mtime 1651121024): 26 files, no impossibilities.
 # C:\Windows\System32\WindowsPowerShell\v1.0\ (key C:/Windows/System32/WindowsPowerShell/v1.0/, mtime 1622915612): 31 files, no impossibilities.
-# . (key d:/programforVS/LSM_test/lsm-kv-normal, mtime 1652632307): 27 files, no impossibilities.
+# . (key d:/programforVS/LSM_test/lsm-kv-normal, mtime 1652678859): 36 files, no impossibilities.
 # D:\Git\Git\cmd (key D:/Git/Git/cmd, mtime 1645000596): 8 files, no impossibilities.
 # C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\ (key C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/, mtime 1642870108): 7 files, no impossibilities.
-# C:\Program Files (x86)\Common Files\Oracle\Java\javapath (key C:/Program Files (x86)/Common Files/Oracle/Java/javapath, mtime 1652409298): 5 files, no impossibilities.
+# C:\Program Files (x86)\Common Files\Oracle\Java\javapath (key C:/Program Fi 
+les (x86)/Common Files/Oracle/Java/javapath, mtime 1652409298): 5 files, no impossibilities.
 # D:\VScode\Microsoft VS Code\Microsoft VS Code\bin (key D:/VScode/Microsoft VS Code/Microsoft VS Code/bin, mtime 1652235019): 4 files, no impossibilities.
 # C:\Program Files\Microsoft SQL Server\150\Tools\Binn\ (key C:/Program Files/Microsoft SQL Server/150/Tools/Binn/, mtime 1642870104): 4 files, no impossibilities.
 # C:\Python310\ (key C:/Python310/, mtime 1644853579): 18 files, no impossibilities.
@@ -247,13 +249,13 @@ USERDOMAIN_ROAMINGPROFILE = LAPTOP-JVDN2KSE
 # C:\Windows\System32\OpenSSH\: could not be stat'd.
 # C:\Python310\Scripts\ (key C:/Python310/Scripts/, mtime 1644853579): 5 files, no impossibilities.
 # D:\MinGW\bin (key D:/MinGW/bin, mtime 1649055302): 58 files, no impossibilities.
-# C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common (key C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common, mtime 1639092350): 10 files,  
-no impossibilities.
+# C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common (key C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common, mtime 1639092350): 10 files, no impossibilities.
 # D:\maven\apache-maven-3.8.5-bin\apache-maven-3.8.5\bin (key D:/maven/apache-maven-3.8.5-bin/apache-maven-3.8.5/bin, mtime 1646451002): 8 files, no impossibilities.
 # D:\JetBrains\DataGrip 2021.3.4\bin (key D:/JetBrains/DataGrip 2021.3.4/bin, mtime 1644836987): 29 files, no impossibilities.
 # C:\Users\86131\.dotnet\tools: could not be stat'd.
 # %CATALINA_HOME\bin: could not be stat'd.
-# C:\Users\86131\go\bin (key C:/Users/86131/go/bin, mtime 1650806200): 11 files, no impossibilities.
+# C:\Users\86131\go\bin (key C:/Users/86131/go/bin, mtime 1650806200): 11 files, no impossibilities 
+.
 # C:\ProgramData\chocolatey\bin (key C:/ProgramData/chocolatey/bin, mtime 1644853536): 13 files, no impossibilities.
 # C:\Windows (key C:/Windows, mtime 1652463296): 130 files, no impossibilities.
 # C:\Program Files\Go\bin (key C:/Program Files/Go/bin, mtime 1649172701): 4 files, no impossibilities.
@@ -264,7 +266,7 @@ no impossibilities.
 # C:\Windows\system32 (key C:/Windows/system32, mtime 1652496555): 2916 files, no impossibilities.
 # D:\programforVS\goprogram (key D:/programforVS/goprogram, mtime 1649341375): 5 files, no impossibilities.
 
-# 3712 files, no impossibilities in 36 directories.
+# 3721 files, no impossibilities in 36 directories.
 
 # Implicit Rules
 
@@ -274,24 +276,28 @@ no impossibilities.
 
 # Not a target:
 correctness.o:
-#  Implicit rule search has not been done.
-#  Modification time never checked.
-#  File has not been updated.
+#  Implicit rule search has been done.
+#  Last modified 2022-05-16 13:27:32
+#  File has been updated.
+#  Successfully updated.
 
 correctness: level.o SSTable.o SkipList.o kvstore.o correctness.o
 #  Implicit rule search has been done.
 #  File does not exist.
-#  File has not been updated.
+#  File has been updated.
+#  Successfully updated.
 
 all: correctness persistence main
 #  Command line target.
 #  Implicit rule search has been done.
 #  File does not exist.
-#  File has not been updated.
+#  File has been updated.
+#  Successfully updated.
 
 # Not a target:
 .SUFFIXES:
-#  Implicit rule search has not been done.
+#  Implicit rule search h 
+as not been done.
 #  Modification time never checked.
 #  File has not been updated.
 
@@ -304,32 +310,37 @@ Makefile:
 
 # Not a target:
 SkipList.o:
-#  Implicit rule search has not been done.
-#  Modification time never checked.
-#  File has not been updated.
+#  Implicit rule search has been done.
+#  Last modified 2022-05-16 13:27:34
+#  File has been updated.
+#  Successfully updated.
 
 # Not a target:
 level.o:
 #  Implicit rule search has been done.
-#  File does not exist.
-#  File has not been updated.
+#  Last modified 2022-05-16 13:27:33
+#  File has been updated.
+#  Successfully updated.
 
 # Not a target:
 kvstore.o:
-#  Implicit rule search has not been done.
-#  Modification time never checked.
-#  File has not been updated.
+#  Implicit rule search has been done.
+#  Last modified 2022-05-16 13:27:36
+#  File has been updated.
+#  Successfully updated.
 
 persistence: level.o SSTable.o SkipList.o kvstore.o persistence.o
-#  Implicit rule search has not been done.
-#  Modification time never checked.
-#  File has not been updated.
+#  Implicit rule search has been done.
+#  File does not exist.
+#  File has been updated.
+#  Successfully updated.
 
 # Not a target:
 persistence.o:
-#  Implicit rule search has not been done.
-#  Modification time never checked.
-#  File has not been updated.
+#  Implicit rule search has been done.
+#  Last modified 2022-05-16 13:27:37
+#  File has been updated.
+#  Successfully updated.
 
 # Not a target:
 .DEFAULT:
@@ -345,21 +356,24 @@ clean:
 	-rm -f correctness persistence *.o
 
 main: level.o SSTable.o SkipList.o kvstore.o main.o
-#  Implicit rule search has not been done.
-#  Modification time never checked.
-#  File has not been updated.
+#  Implicit rule search has been done.
+#  File does not exist.
+#  File has been updated.
+#  Successfully updated.
 
 # Not a target:
 main.o:
-#  Implicit rule search has not been done.
-#  Modification time never checked.
-#  File has not been updated.
+#  Implicit rule search has been done.
+#  Last modified 2022-05-16 13:27:38
+#  File has been updated.
+#  Successfully updated.
 
 # Not a target:
 SSTable.o:
-#  Implicit rule search has not been done.
-#  Modification time never checked.
-#  File has not been updated.
+#  Implicit rule search has been done.
+#  Last modified 2022-05-16 13:27:34
+#  File has been updated.
+#  Successfully updated.
 
 # files hash-table stats:
 # Load=15/1024=1%, Rehash=0, Collisions=0/47=0%
@@ -369,16 +383,15 @@ SSTable.o:
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 7 (5) / strings = 3646 / storage = 55175 B / avg = 15 B
-# current buf: size = 8174 B / used = 6205 B / count = 367 / avg = 16 B
-# other used: total = 47001 B / count = 3279 / avg = 14 B
-# other free: total = 74 B / max = 25 B / min = 5 B / avg = 12 B
+# strcache buffers: 7 ( 
+4) / strings = 3648 / storage = 55196 B / avg = 15 B
+# current buf: size = 8174 B / used = 6232 B / count = 364 / avg = 17 B
+# other used: total = 47022 B / count = 3284 / avg = 14 B
+# other free: total = 80 B / max = 28 B / min = 3 B / avg = 13 B
 
-# strcache performance: lookups = 3781 / hit rate = 3%
+# strcache performance: lookups = 3790 / hit rate = 3%
 # hash-table stats:
-# Load=3646/8192=45%, Rehash=0, Collisions=1396/3781=37%
-# Finished Make data base on Mon May 16 00:32:20 2022
+# Load=3648/8192=45%, Rehash=0, Collisions=1397/3790=37%
+# Finished Make data base on Mon May 16 14:10:38 2022
 
  
-make.exe: *** No rule to make target 'level.o', needed by 'correctness'.  Stop.
-

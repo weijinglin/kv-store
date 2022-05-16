@@ -64,4 +64,8 @@ public:
     kv* merge_self(kv* mem,uint64_t len,bool is_lastint ,uint64_t &mer_time);
 
 	void w_file_plus(SSTablecache* myCache,SkipList * mem);
+
+	//下面是实验测试中所需要的测试函数
+	//将实验结果输出到文件中
+	void report();
 };

@@ -105,7 +105,7 @@ uint64_t Level::get_min_time()
 void Level::get_table_time(vector<SSTablecache*> &s,int count)
 {
     //先保证正确性，采用最最土的方法
-    uint64_t index_array[count];
+    uint64_t *index_array = new uint64_t[count];
     bool *hit = new bool[this->getCount()];
 
     for(unsigned int i = 0;i < this->getCount();++i){
@@ -135,6 +135,8 @@ void Level::get_table_time(vector<SSTablecache*> &s,int count)
     for(int i = 0;i < count;++i){
         s.push_back(this->SSt_chunk.at(index_array[i]));
     }
+    delete [] index_array;
+    delete [] hit;
 }
 
 
@@ -163,6 +165,7 @@ void Level::del_list(vector<SSTablecache*> &s)
                 delete this->SSt_chunk[j];
                 del_num++;
                 this->SSt_chunk[j] = nullptr;
+                break;
             }
         }
     }

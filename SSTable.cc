@@ -140,7 +140,7 @@ bool SSTablecache::Search(unsigned long long &key,int* message)
 
 SSTablecache::~SSTablecache()
 {
-    delete Bloom;
+    delete [] Bloom;
     kv_array.clear();
 }
 

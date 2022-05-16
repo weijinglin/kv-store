@@ -1,1 +1,1 @@
-del -rf correctness persistence *.o
+del -rf correctness persistence main *.o
